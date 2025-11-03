@@ -1,0 +1,119 @@
+{
+  "users": [
+    {
+      "id": "gNxxeNoNFOkuIBpI_iCfi",
+      "email": "moseskuria1@gmail.com",
+      "passwordHash": "$2a$10$nZXq6fuH95ZlQseE.IBuGuNvfr6jXeZGypJT57WRcABb/ei2MkKoG",
+      "firstName": "moses",
+      "lastName": "kuria",
+      "age": 28,
+      "gender": "female",
+      "location": {
+        "city": "nairobi",
+        "country": "kenya"
+      },
+      "occupation": "police",
+      "interests": [
+        "Entrepreneurship",
+        "Family building",
+        "Tech & Innovation"
+      ],
+      "bio": "",
+      "goals": [
+        "Partnership leading to family"
+      ],
+      "preferences": {
+        "ageRange": [
+          27,
+          35
+        ],
+        "locationRadiusKm": 300,
+        "gender": "female"
+      },
+      "badges": [],
+      "plan": "free",
+      "boosts": 0,
+      "photoUrls": [],
+      "createdAt": "2025-10-31T02:40:22.998Z",
+      "updatedAt": "2025-11-01T04:02:23.744Z"
+    },
+    {
+      "id": "ABpxrgML8h_BABUfxDKpJ",
+      "email": "keithpaul.biz@gmail.com",
+      "passwordHash": "$2a$10$CgL6/g/r7I5wj5F2AO1CD.7Bqbh2.HkEh/3aBPt6zQ58.RNP1Emku",
+      "firstName": "Keith",
+      "lastName": "Muoki",
+      "age": 28,
+      "gender": "female",
+      "location": {
+        "city": "Mombasa",
+        "country": "Kenya"
+      },
+      "occupation": "",
+      "interests": [
+        "Entrepreneurship",
+        "Travel",
+        "Community service"
+      ],
+      "bio": "Two good to be true",
+      "goals": [
+        "Partnership leading to family"
+      ],
+      "preferences": {
+        "ageRange": [
+          27,
+          45
+        ],
+        "locationRadiusKm": 300,
+        "gender": "male"
+      },
+      "badges": [],
+      "plan": "free",
+      "boosts": 0,
+      "photoUrls": [],
+      "createdAt": "2025-11-02T13:40:37.766Z",
+      "updatedAt": "2025-11-02T13:40:37.766Z"
+    }
+  ],
+  "sessions": [],
+  "swipes": [
+    {
+      "id": "gNxxeNoNFOkuIBpI_iCfi-ABpxrgML8h_BABUfxDKpJ-1762134290079",
+      "swiperId": "gNxxeNoNFOkuIBpI_iCfi",
+      "targetId": "ABpxrgML8h_BABUfxDKpJ",
+      "decision": "like",
+      "createdAt": "2025-11-03T01:44:50.079Z"
+    }
+  ],
+  "matches": [
+    {
+      "id": "match-gNxxeNoNFOkuIBpI_iCfi-ABpxrgML8h_BABUfxDKpJ",
+      "members": [
+        "gNxxeNoNFOkuIBpI_iCfi",
+        "ABpxrgML8h_BABUfxDKpJ"
+      ],
+      "status": "pending",
+      "initiatedBy": "gNxxeNoNFOkuIBpI_iCfi",
+      "createdAt": "2025-11-03T01:44:50.080Z",
+      "updatedAt": "2025-11-03T01:45:17.921Z",
+      "conversation": [
+        {
+          "id": "msg-1762134317921",
+          "senderId": "gNxxeNoNFOkuIBpI_iCfi",
+          "text": "hey",
+          "createdAt": "2025-11-03T01:45:17.921Z"
+        }
+      ]
+    }
+  ],
+  "subscriptions": [
+    {
+      "id": "gNxxeNoNFOkuIBpI_iCfi-intention-plus-1762138421563",
+      "userId": "gNxxeNoNFOkuIBpI_iCfi",
+      "planId": "intention-plus",
+      "provider": "paystack",
+      "status": "pending",
+      "createdAt": "2025-11-03T02:53:41.563Z"
+    }
+  ]
+}

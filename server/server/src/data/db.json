@@ -1,0 +1,93 @@
+{
+  "users": [
+    {
+      "id": "MElJSxgptraQ26MamfSIe",
+      "email": "werudenise@gmail.com",
+      "passwordHash": "$2a$10$sfqgzMd6rFVt00K9xhOxd.EvTp7pNyJzXUe9AtQfSSFfcOyx8OQPK",
+      "firstName": "weru",
+      "lastName": "dennis",
+      "age": 28,
+      "gender": "female",
+      "location": {
+        "city": "Kitale",
+        "country": "Kenya"
+      },
+      "occupation": "mason",
+      "interests": [
+        "Culinary adventures",
+        "Books & Learning",
+        "Tech & Innovation"
+      ],
+      "bio": "lively",
+      "goals": [
+        "Partnership leading to family"
+      ],
+      "preferences": {
+        "ageRange": [
+          25,
+          29
+        ],
+        "locationRadiusKm": 300,
+        "gender": "female"
+      },
+      "badges": [],
+      "plan": "free",
+      "boosts": 0,
+      "photoUrls": [],
+      "createdAt": "2025-10-30T02:53:22.412Z",
+      "updatedAt": "2025-10-30T02:53:22.412Z"
+    },
+    {
+      "id": "QQFdAXK4Ob5zol3wScGt7",
+      "email": "moses12@gmail.com",
+      "passwordHash": "$2a$10$B3/824XJFOOUFbPCxiHIvuX1s5noMD9fYpFI9QsvtEh4nTcaUc84K",
+      "firstName": "moses",
+      "lastName": "kuria",
+      "age": 34,
+      "gender": "female",
+      "location": {
+        "city": "hong kong",
+        "country": "china"
+      },
+      "occupation": "police",
+      "interests": [
+        "Entrepreneurship",
+        "Community service",
+        "Culinary adventures",
+        "Tech & Innovation",
+        "Music"
+      ],
+      "bio": "",
+      "goals": [
+        "Faith-centered relationship"
+      ],
+      "preferences": {
+        "ageRange": [
+          27,
+          44
+        ],
+        "locationRadiusKm": 300,
+        "gender": "male"
+      },
+      "badges": [],
+      "plan": "free",
+      "boosts": 0,
+      "photoUrls": [],
+      "createdAt": "2025-10-30T18:06:46.648Z",
+      "updatedAt": "2025-10-30T18:06:46.648Z"
+    }
+  ],
+  "sessions": [],
+  "swipes": [],
+  "matches": [],
+  "subscriptions": [
+    {
+      "id": "MElJSxgptraQ26MamfSIe-intention-plus-1761793845625",
+      "userId": "MElJSxgptraQ26MamfSIe",
+      "planId": "intention-plus",
+      "provider": "paystack",
+      "status": "pending",
+      "createdAt": "2025-10-30T03:10:45.625Z"
+    }
+  ]
+}

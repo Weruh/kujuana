@@ -1,0 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.gradient-bg {
+  background: radial-gradient(circle at top, #f8f3ff 0%, #caa2ff 45%, #fdf9ff 100%);
+}
+
+
+
