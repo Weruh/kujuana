@@ -5,6 +5,7 @@ import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
 import Discover from './pages/Discover.jsx';
 import Matches from './pages/Matches.jsx';
+import MatchConversation from './pages/MatchConversation.jsx';
 import Profile from './pages/Profile.jsx';
 import Upgrade from './pages/Upgrade.jsx';
 import AuthenticatedLayout from './layouts/AuthenticatedLayout.jsx';
@@ -41,6 +42,7 @@ const App = () => (
       >
         <Route path="/discover" element={<Discover />} />
         <Route path="/matches" element={<Matches />} />
+        <Route path="/matches/:matchId" element={<MatchConversation />} />
         <Route path="/profile" element={<Profile />} />
       </Route>
       <Route path="/upgrade" element={<Upgrade />} />
@@ -50,3 +52,5 @@ const App = () => (
 );
 
 export default App;
+
+

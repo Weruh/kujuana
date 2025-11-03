@@ -1,16 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { api, useAuthStore } from '../store/auth.js';
-import MatchConversationModal from '../components/MatchConversationModal.jsx';
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { api, useAuthStore } from "../store/auth.js";
 
 const sortKey = (match) => new Date(match.updatedAt || match.matchedAt || match.createdAt || 0).getTime();
 
 const Matches = () => {
   const [matches, setMatches] = useState([]);
   const [stats, setStats] = useState(null);
-  const [activeMatch, setActiveMatch] = useState(null);
-  const [sending, setSending] = useState(false);
-  const [conciergeError, setConciergeError] = useState('');
   const location = useLocation();
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
@@ -19,8 +15,8 @@ const Matches = () => {
     const load = async () => {
       try {
         const [{ data: matchesRes }, { data: statsRes }] = await Promise.all([
-          api.get('/match/mine'),
-          api.get('/match/stats'),
+          api.get("/match/mine"),
+          api.get("/match/stats"),
         ]);
         setMatches(matchesRes.data);
         setStats(statsRes.data);
@@ -34,60 +30,17 @@ const Matches = () => {
   useEffect(() => {
     if (!matches.length) return;
     const params = new URLSearchParams(location.search);
-    const matchId = params.get('match');
+    const matchId = params.get("match");
     if (!matchId) return;
-    if (activeMatch?.id === matchId) return;
-    const found = matches.find((item) => item.id === matchId);
-    if (found) {
-      setActiveMatch(found);
-      setConciergeError('');
+    const exists = matches.some((item) => item.id === matchId);
+    if (exists) {
+      navigate(`/matches/${matchId}`, { replace: true });
     }
-  }, [location.search, matches, activeMatch?.id]);
-
-  const showConcierge = Boolean(activeMatch);
-
-  const updateQuery = (nextMatchId, replace = true) => {
-    const params = new URLSearchParams(location.search);
-    if (nextMatchId) {
-      params.set('match', nextMatchId);
-    } else {
-      params.delete('match');
-    }
-    const search = params.toString();
-    navigate({ pathname: location.pathname, search: search ? `?${search}` : '' }, { replace });
-  };
+  }, [location.search, matches, navigate]);
 
   const handleOpenConcierge = (match) => {
-    if (!match) return;
-    setActiveMatch(match);
-    setConciergeError('');
-    updateQuery(match.id, false);
-  };
-
-  const handleCloseConcierge = () => {
-    setActiveMatch(null);
-    setConciergeError('');
-    updateQuery(null, true);
-  };
-
-  const handleSendMessage = async (text) => {
-    if (!activeMatch) return false;
-    setSending(true);
-    try {
-      const { data } = await api.post(`/match/${activeMatch.id}/messages`, { text });
-      const updatedMatch = data?.data?.match;
-      if (updatedMatch) {
-        setMatches((prev) => prev.map((item) => (item.id === updatedMatch.id ? updatedMatch : item)));
-        setActiveMatch(updatedMatch);
-      }
-      setConciergeError('');
-      return true;
-    } catch (error) {
-      setConciergeError(error.response?.data?.message || 'Could not send note.');
-      return false;
-    } finally {
-      setSending(false);
-    }
+    if (!match?.id) return;
+    navigate(`/matches/${match.id}`);
   };
 
   const sortedMatches = useMemo(
@@ -118,10 +71,10 @@ const Matches = () => {
 
       <div className="grid gap-4 md:grid-cols-2">
         {sortedMatches.map((match) => {
-          const status = match.status || 'matched';
-          const isPending = status !== 'matched';
+          const status = match.status || "matched";
+          const isPending = status !== "matched";
           const counterpart = match.members.find((member) => member.id !== user?.id) || match.members[0];
-          const counterpartName = counterpart?.firstName || 'your match';
+          const counterpartName = counterpart?.firstName || "your match";
           const awaitingMemberId = match.awaitingMemberId;
           const awaitingMember = match.members.find((member) => member.id === awaitingMemberId);
           const awaitingName = awaitingMember?.firstName || counterpartName;
@@ -130,33 +83,37 @@ const Matches = () => {
           const initiatedByMe = initiatedBy === user?.id;
           const createdOn = match.createdAt ? new Date(match.createdAt).toLocaleDateString() : null;
           const matchedOn = match.matchedAt ? new Date(match.matchedAt).toLocaleDateString() : createdOn;
-          const badgeClasses = isPending ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700';
-          const badgeLabel = isPending ? 'Awaiting reply' : 'Mutual match';
+          const badgeClasses = isPending ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700";
+          const badgeLabel = isPending ? "Awaiting reply" : "Mutual match";
           const summary = isPending
             ? initiatedByMe
-              ? `You liked ${counterpartName}${createdOn ? ` on ${createdOn}` : ''}.`
-              : `${counterpartName} liked you${createdOn ? ` on ${createdOn}` : ''}.`
-            : `Matched on ${matchedOn || '-'}.`;
+              ? `You liked ${counterpartName}${createdOn ? ` on ${createdOn}` : ""}.`
+              : `${counterpartName} liked you${createdOn ? ` on ${createdOn}` : ""}.`
+            : `Matched on ${matchedOn || "-"}.`;
           const description = isPending
             ? initiatedByMe
               ? awaitingIsMe
-                ? 'Waiting for you to respond. A thoughtful message can move the connection forward.'
+                ? "Waiting for you to respond. A thoughtful message can move the connection forward."
                 : `Waiting for ${awaitingName} to respond. A thoughtful message can move the connection forward.`
               : `${counterpartName} reached out first. Send an intentional reply or update your preferences.`
-            : 'Lean into authentic conversation. Share intentions, plan your first meeting, and nurture purpose.';
+            : "Lean into authentic conversation. Share intentions, plan your first meeting, and nurture purpose.";
 
           return (
             <div key={match.id} className="flex flex-col gap-4 rounded-3xl bg-white p-6 shadow">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-4">
-                  {match.members.slice(0, 2).map((member) => (
-                    <img
-                      key={member.id}
-                      src={member.photoUrls?.[0] || `https://api.dicebear.com/7.x/initials/svg?seed=${member.firstName}`}
-                      alt={member.firstName}
-                      className="h-16 w-16 rounded-2xl object-cover"
-                    />
-                  ))}
+                  {match.members.slice(0, 2).map((member) => {
+                    const label = [member.firstName, member.lastName].filter(Boolean).join(" ") || "Match";
+                    return (
+                      <div
+                        key={member.id}
+                        className="flex h-16 min-w-[4rem] items-center justify-center rounded-2xl bg-brand-dark px-3 text-center text-sm font-semibold text-white shadow"
+                        title={label}
+                      >
+                        <span className="max-w-[5rem] whitespace-normal leading-tight">{label}</span>
+                      </div>
+                    );
+                  })}
                 </div>
                 <span className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-wide ${badgeClasses}`}>
                   {badgeLabel}
@@ -171,7 +128,7 @@ const Matches = () => {
                 className="self-start rounded-full border border-brand-dark px-5 py-2 text-sm font-semibold text-brand-dark transition hover:bg-brand/5"
                 onClick={() => handleOpenConcierge(match)}
               >
-                {isPending ? 'Send a note' : 'Open message concierge'}
+                {isPending ? "Send a note" : "Open message concierge"}
               </button>
             </div>
           );
@@ -182,19 +139,21 @@ const Matches = () => {
           <p>No matches yet. Keep showing up intentionally; our community is growing every day.</p>
         </div>
       )}
-
-      {showConcierge && (
-        <MatchConversationModal
-          match={activeMatch}
-          currentUserId={user?.id}
-          sending={sending}
-          error={conciergeError}
-          onClose={handleCloseConcierge}
-          onSendMessage={handleSendMessage}
-        />
-      )}
     </div>
   );
 };
 
 export default Matches;
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
-import { ChatBubbleOvalLeftIcon, HeartIcon, StarIcon } from '@heroicons/react/24/solid';
-import { ChevronLeftIcon, ChevronRightIcon, MapPinIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { useEffect, useRef, useState } from "react";
+import { ChatBubbleOvalLeftIcon, HeartIcon, StarIcon } from "@heroicons/react/24/solid";
+import { ChevronLeftIcon, ChevronRightIcon, MapPinIcon, XMarkIcon } from "@heroicons/react/24/outline";
 
 const SwipeCard = ({ profile, onLike, onPass, onSuperLike, onMessage, onPrevProfile, onNextProfile }) => {
-  const fallbackPhoto = `https://api.dicebear.com/7.x/initials/svg?seed=${profile.firstName || 'Kujuana'}`;
+  const fallbackPhoto = `https://api.dicebear.com/7.x/initials/svg?seed=${profile.firstName || "Kujuana"}`;
   const photos = (profile.photoUrls?.length ? profile.photoUrls : [fallbackPhoto]).filter(Boolean);
   const [photoIndex, setPhotoIndex] = useState(0);
   const [showLikeBurst, setShowLikeBurst] = useState(false);
@@ -36,7 +36,7 @@ const SwipeCard = ({ profile, onLike, onPass, onSuperLike, onMessage, onPrevProf
   );
 
   const photoUrl = photos[photoIndex] || fallbackPhoto;
-  const locationLabel = [profile.location?.city, profile.location?.country].filter(Boolean).join(', ');
+  const locationLabel = [profile.location?.city, profile.location?.country].filter(Boolean).join(", ");
   const canCyclePhotos = photos.length > 1;
 
   const goPrevPhoto = () => {
@@ -53,14 +53,37 @@ const SwipeCard = ({ profile, onLike, onPass, onSuperLike, onMessage, onPrevProf
     if (!onPrevProfile && !onNextProfile) return;
 
     const rect = event.currentTarget.getBoundingClientRect();
-    const clientX = event.clientX ?? event.nativeEvent?.clientX;
+    let clientX = event.clientX;
 
-    if (typeof clientX !== 'number' || Number.isNaN(clientX)) return;
+    if (typeof clientX !== "number" || Number.isNaN(clientX)) {
+      const nativeEvent = event.nativeEvent;
+      if (nativeEvent?.changedTouches?.length) {
+        clientX = nativeEvent.changedTouches[0].clientX;
+      } else if (nativeEvent?.touches?.length) {
+        clientX = nativeEvent.touches[0].clientX;
+      } else if (typeof nativeEvent?.clientX === "number") {
+        clientX = nativeEvent.clientX;
+      }
+    }
+
+    if (typeof clientX !== "number" || Number.isNaN(clientX)) return;
 
     const relativeX = clientX - rect.left;
     if (relativeX < rect.width / 2) {
       onPrevProfile?.();
     } else {
+      onNextProfile?.();
+    }
+  };
+
+  const handleCardKeyDown = (event) => {
+    if (!onPrevProfile && !onNextProfile) return;
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      onPrevProfile?.();
+    }
+    if (event.key === "ArrowRight") {
+      event.preventDefault();
       onNextProfile?.();
     }
   };
@@ -103,12 +126,18 @@ const SwipeCard = ({ profile, onLike, onPass, onSuperLike, onMessage, onPrevProf
 
   return (
     <div className="flex w-full max-w-sm flex-col items-center gap-6 sm:max-w-md">
-      <div onClick={handleCardTap} className="relative aspect-[3/4] w-full overflow-hidden rounded-[40px] shadow-[0_28px_60px_-35px_rgba(15,23,42,0.85)]">
+      <div
+        onClick={handleCardTap}
+        onKeyDown={handleCardKeyDown}
+        role="button"
+        tabIndex={0}
+        className="relative aspect-[3/4] w-full cursor-pointer overflow-hidden rounded-[40px] shadow-[0_28px_60px_-35px_rgba(15,23,42,0.85)] focus:outline-none focus-visible:ring-4 focus-visible:ring-brand/40"
+      >
         <img src={photoUrl} alt={profile.firstName} className="h-full w-full object-cover" />
         <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
         <div
           className={`pointer-events-none absolute inset-0 z-20 flex items-center justify-center transition duration-500 ease-out ${
-            showLikeBurst ? 'scale-110 opacity-100' : 'scale-50 opacity-0'
+            showLikeBurst ? "scale-110 opacity-100" : "scale-50 opacity-0"
           }`}
         >
           <HeartIcon className="h-24 w-24 text-rose-500 drop-shadow-[0_15px_25px_rgba(244,63,94,0.5)]" />
@@ -135,8 +164,8 @@ const SwipeCard = ({ profile, onLike, onPass, onSuperLike, onMessage, onPrevProf
               <div className="pointer-events-none absolute bottom-6 left-1/2 flex -translate-x-1/2 gap-1">
                 {photos.map((_, index) => (
                   <span
-                    key={`${profile.id || 'profile'}-${index}`}
-                    className={`h-1.5 w-6 rounded-full transition ${index === photoIndex ? 'bg-white' : 'bg-white/30'}`}
+                    key={`${profile.id || "profile"}-${index}`}
+                    className={`h-1.5 w-6 rounded-full transition ${index === photoIndex ? "bg-white" : "bg-white/30"}`}
                   />
                 ))}
               </div>
@@ -144,7 +173,7 @@ const SwipeCard = ({ profile, onLike, onPass, onSuperLike, onMessage, onPrevProf
           )}
           <div className="flex items-start justify-between px-6 pt-6">
             <span className="rounded-full bg-black/40 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white/90 backdrop-blur">
-              {profile.goal || 'Serious relationship'}
+              {profile.goal || "Serious relationship"}
             </span>
             {profile.distance && (
               <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white backdrop-blur">
@@ -164,7 +193,7 @@ const SwipeCard = ({ profile, onLike, onPass, onSuperLike, onMessage, onPrevProf
               </p>
             )}
             <p className="text-sm leading-relaxed text-white/90">
-              {profile.bio || 'Intentional, grounded and ready to build a meaningful partnership.'}
+              {profile.bio || "Intentional, grounded and ready to build a meaningful partnership."}
             </p>
             {!!(profile.interests || []).length && (
               <div className="flex flex-wrap gap-2">

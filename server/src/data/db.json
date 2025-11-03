@@ -73,6 +73,44 @@
       "photoUrls": [],
       "createdAt": "2025-11-02T13:40:37.766Z",
       "updatedAt": "2025-11-02T13:40:37.766Z"
+    },
+    {
+      "id": "YTk03yb_f2lb9AS9xVKxy",
+      "email": "kimaniichugwah1@gmail.com",
+      "passwordHash": "$2a$10$UXzLDTsXMVJoDnMFSLV5wuOsW/qoU2/dzk/vaiLs4q9NBhl1fuC6m",
+      "firstName": "kimani",
+      "lastName": "ichugwah",
+      "age": 33,
+      "gender": "male",
+      "location": {
+        "city": "kampala",
+        "country": "uganda"
+      },
+      "occupation": "manager",
+      "interests": [
+        "Family building",
+        "Outdoor retreats",
+        "Tech & Innovation",
+        "Fitness"
+      ],
+      "bio": "am a project manager in an ai company",
+      "goals": [
+        "Marriage within 12-24 months"
+      ],
+      "preferences": {
+        "ageRange": [
+          25,
+          30
+        ],
+        "locationRadiusKm": 300,
+        "gender": "female"
+      },
+      "badges": [],
+      "plan": "free",
+      "boosts": 0,
+      "photoUrls": [],
+      "createdAt": "2025-11-03T03:26:54.784Z",
+      "updatedAt": "2025-11-03T03:26:54.784Z"
     }
   ],
   "sessions": [],
@@ -83,6 +121,20 @@
       "targetId": "ABpxrgML8h_BABUfxDKpJ",
       "decision": "like",
       "createdAt": "2025-11-03T01:44:50.079Z"
+    },
+    {
+      "id": "YTk03yb_f2lb9AS9xVKxy-gNxxeNoNFOkuIBpI_iCfi-1762140432676",
+      "swiperId": "YTk03yb_f2lb9AS9xVKxy",
+      "targetId": "gNxxeNoNFOkuIBpI_iCfi",
+      "decision": "like",
+      "createdAt": "2025-11-03T03:27:12.676Z"
+    },
+    {
+      "id": "YTk03yb_f2lb9AS9xVKxy-ABpxrgML8h_BABUfxDKpJ-1762140547204",
+      "swiperId": "YTk03yb_f2lb9AS9xVKxy",
+      "targetId": "ABpxrgML8h_BABUfxDKpJ",
+      "decision": "like",
+      "createdAt": "2025-11-03T03:29:07.204Z"
     }
   ],
   "matches": [
@@ -102,6 +154,56 @@
           "senderId": "gNxxeNoNFOkuIBpI_iCfi",
           "text": "hey",
           "createdAt": "2025-11-03T01:45:17.921Z"
+        }
+      ]
+    },
+    {
+      "id": "match-YTk03yb_f2lb9AS9xVKxy-gNxxeNoNFOkuIBpI_iCfi",
+      "members": [
+        "YTk03yb_f2lb9AS9xVKxy",
+        "gNxxeNoNFOkuIBpI_iCfi"
+      ],
+      "status": "pending",
+      "initiatedBy": "YTk03yb_f2lb9AS9xVKxy",
+      "createdAt": "2025-11-03T03:27:12.681Z",
+      "updatedAt": "2025-11-03T03:30:28.443Z",
+      "conversation": [
+        {
+          "id": "msg-1762140459861",
+          "senderId": "YTk03yb_f2lb9AS9xVKxy",
+          "text": "hey",
+          "createdAt": "2025-11-03T03:27:39.861Z"
+        },
+        {
+          "id": "msg-1762140628443",
+          "senderId": "gNxxeNoNFOkuIBpI_iCfi",
+          "text": "how are you",
+          "createdAt": "2025-11-03T03:30:28.443Z"
+        }
+      ]
+    },
+    {
+      "id": "match-YTk03yb_f2lb9AS9xVKxy-ABpxrgML8h_BABUfxDKpJ",
+      "members": [
+        "YTk03yb_f2lb9AS9xVKxy",
+        "ABpxrgML8h_BABUfxDKpJ"
+      ],
+      "status": "pending",
+      "initiatedBy": "YTk03yb_f2lb9AS9xVKxy",
+      "createdAt": "2025-11-03T03:29:07.205Z",
+      "updatedAt": "2025-11-03T05:02:04.024Z",
+      "conversation": [
+        {
+          "id": "msg-1762140556224",
+          "senderId": "YTk03yb_f2lb9AS9xVKxy",
+          "text": "hey",
+          "createdAt": "2025-11-03T03:29:16.224Z"
+        },
+        {
+          "id": "msg-1762146124024",
+          "senderId": "YTk03yb_f2lb9AS9xVKxy",
+          "text": "hey",
+          "createdAt": "2025-11-03T05:02:04.024Z"
         }
       ]
     }

@@ -86,7 +86,7 @@ const SwipeDeck = () => {
 
   const openConcierge = () => {
     if (matchDialog?.match?.id) {
-      navigate(`/matches?match=${matchDialog.match.id}`);
+      navigate(`/matches/${matchDialog.match.id}`);
     }
     setMatchDialog(null);
   };
@@ -144,7 +144,7 @@ const SwipeDeck = () => {
     }
     const targetMatchId = latestMatchId || current?.existingMatchId || current?.matchId;
     if (targetMatchId) {
-      navigate(`/matches?match=${targetMatchId}`);
+      navigate(`/matches/${targetMatchId}`);
     } else {
       navigate('/matches');
     }
@@ -238,6 +238,8 @@ const SwipeDeck = () => {
 };
 
 export default SwipeDeck;
+
+
 
 
 
