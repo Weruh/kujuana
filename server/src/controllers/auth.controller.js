@@ -56,7 +56,7 @@ export const register = async (req, res, next) => {
       bio,
       goals,
       preferences: {
-        ageRange: preferences.ageRange || [25, 55],
+        ageRange: preferences.ageRange || [22, 55],
         locationRadiusKm: preferences.locationRadiusKm || 300,
         gender: preferences.gender || (gender === 'male' ? 'female' : 'male'),
       },

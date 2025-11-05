@@ -1,8 +1,43 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ArrowLeftIcon,
+  PaperAirplaneIcon,
+  PhoneIcon,
+  VideoCameraIcon,
+  MicrophoneIcon,
+} from '@heroicons/react/24/solid';
+import { CheckIcon } from '@heroicons/react/20/solid';
+import { EllipsisVerticalIcon, FaceSmileIcon, PaperClipIcon, CameraIcon } from '@heroicons/react/24/outline';
+
+const formatDayLabel = (isoDate) => {
+  const date = new Date(isoDate);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+
+  const sameDay = (a, b) =>
+    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+  if (sameDay(date, today)) return 'Today';
+  if (sameDay(date, yesterday)) return 'Yesterday';
+  return date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+};
+
+const formatTime = (isoDate) =>
+  new Date(isoDate).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+
+const chatBackgroundStyle = {
+  backgroundColor: '#efeae2',
+  backgroundImage:
+    "url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27320%27 height=%27320%27 fill=%27none%27 viewBox=%270 0 160 160%27%3E%3Cg opacity=%270.22%27%3E%3Cpath fill=%23f7f2eb d=%27M0 0h160v160H0z%27/%3E%3Cpath stroke=%23d5c7b5 stroke-width=%271.6%27 d=%27M15 15h40v40H15zM105 15h40v40h-40zM60 105h40v40H60z%27/%3E%3Cpath stroke=%23d5c7b5 stroke-linecap=%27round%27 stroke-width=%271.6%27 d=%27M60 15l20 20 20-20M15 95l20 20-20 20M125 95l20 20-20 20%27/%3E%3C/g%3E%3C/svg%3E')",
+  backgroundSize: '360px',
+};
 
 const MatchConversationModal = ({ match, currentUserId, sending, error, onClose, onSendMessage }) => {
   const [draft, setDraft] = useState('');
   const containerRef = useRef(null);
+  const textareaRef = useRef(null);
+  const attachmentInputRef = useRef(null);
 
   useEffect(() => {
     setDraft('');
@@ -14,6 +49,14 @@ const MatchConversationModal = ({ match, currentUserId, sending, error, onClose,
     }
   }, [match?.conversation?.length]);
 
+  useEffect(() => {
+    if (!textareaRef.current) return;
+    const element = textareaRef.current;
+    element.style.height = 'auto';
+    const nextHeight = Math.min(element.scrollHeight, 160);
+    element.style.height = `${nextHeight}px`;
+  }, [draft]);
+
   const partner = useMemo(() => {
     if (!match?.members?.length) return null;
     if (!currentUserId) return match.members[0];
@@ -24,110 +67,233 @@ const MatchConversationModal = ({ match, currentUserId, sending, error, onClose,
 
   const isPending = (match.status || 'matched') !== 'matched';
   const initiatedByMe = match.initiatedBy === currentUserId;
+  const hasDraft = draft.trim().length > 0;
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  const messages = match.conversation || [];
+
+  const groupedMessages = useMemo(() => {
+    const groups = [];
+    let currentDayKey = '';
+    messages.forEach((message) => {
+      const dayKey = new Date(message.createdAt).toDateString();
+      if (dayKey !== currentDayKey) {
+        groups.push({ type: 'day', id: dayKey, label: formatDayLabel(message.createdAt) });
+        currentDayKey = dayKey;
+      }
+      groups.push({ type: 'message', id: message.id, payload: message });
+    });
+    return groups;
+  }, [messages]);
+
+  const submitMessage = async () => {
     const text = draft.trim();
-    if (!text) return;
+    if (!text || sending) return;
     const ok = await onSendMessage(text);
     if (ok) {
       setDraft('');
     }
   };
 
-  const messages = match.conversation || [];
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    await submitMessage();
+  };
+
+  const handleComposerKeyDown = async (event) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      await submitMessage();
+    }
+  };
+
+  const handleInsertEmoji = () => {
+    setDraft((prev) => `${prev}${prev ? ' ' : ''}:)`);
+  };
+
+  const handleAttachmentClick = () => {
+    attachmentInputRef.current?.click();
+  };
+
+  const handleAttachmentChange = (event) => {
+    const files = Array.from(event.target.files || []);
+    if (!files.length) return;
+    const names = files.map((file) => file.name).join(', ');
+    setDraft((prev) => `${prev}${prev ? '\n' : ''}[Attachment: ${names}]`);
+    event.target.value = '';
+    textareaRef.current?.focus();
+  };
+
+  const handleClose = () => {
+    onClose();
+    setDraft('');
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 px-4">
-      <div className="relative w-full max-w-xl rounded-3xl bg-white p-6 shadow-xl">
+      <div className="relative flex h-[80vh] w-full max-w-[75vw] flex-col overflow-hidden rounded-[2.5rem] border border-[#d1d7db] bg-[#f0f2f5] shadow-2xl">
         <button
           type="button"
-          onClick={onClose}
-          className="absolute right-4 top-4 text-slate-400 transition hover:text-slate-600"
+          onClick={handleClose}
+          className="absolute left-6 top-5 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
           aria-label="Close concierge"
         >
-          &times;
+          <ArrowLeftIcon className="h-6 w-6" />
         </button>
-        <div className="flex items-center gap-3">
-          {partner && (
-            <img
-              src={partner.photoUrls?.[0] || `https://api.dicebear.com/7.x/initials/svg?seed=${partner.firstName}`}
-              alt={partner.firstName}
-              className="h-14 w-14 rounded-2xl object-cover"
-            />
-          )}
-          <div>
-            <div className="flex items-center gap-2">
-              <p className="text-xs uppercase text-slate-500 tracking-wide">Message concierge</p>
-              {isPending && (
-                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
-                  Awaiting reply
-                </span>
-              )}
+
+        <div className="flex items-center justify-between bg-[#075E54] px-6 py-5 pl-20 text-white">
+          <div className="flex items-center gap-3">
+            {partner ? (
+              <img
+                src={
+                  partner.photoUrls?.[0] ||
+                  `https://api.dicebear.com/7.x/initials/svg?seed=${partner.firstName || 'Kujuana'}`
+                }
+                alt={partner.firstName || 'Match avatar'}
+                className="h-12 w-12 rounded-full border-2 border-white/30 object-cover shadow"
+              />
+            ) : (
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-lg font-semibold uppercase">
+                --
+              </span>
+            )}
+            <div className="leading-tight">
+              <h2 className="text-lg font-semibold">{partner ? partner.firstName : 'Your match'}</h2>
+              <div className="flex items-center gap-2 text-xs text-white/80">
+                <span className="inline-flex h-1.5 w-1.5 rounded-full bg-[#25D366]" aria-hidden="true" />
+                <span>{isPending ? 'Waiting for a response' : 'online'}</span>
+              </div>
             </div>
-            <h2 className="text-xl font-semibold text-slate-900">
-              {partner ? `Craft a thoughtful note for ${partner.firstName}` : 'Craft a thoughtful note'}
-            </h2>
-            <p className="text-sm text-slate-500">
-              We save your opening lines so you can keep building the connection with intention.
-            </p>
-            {isPending && (
-              <p className="mt-2 text-xs text-amber-600">
-                {initiatedByMe
-                  ? 'They haven\'t liked you back yet, but your message will land in their concierge right away.'
-                  : `${partner ? partner.firstName : 'This match'} already liked you. Reply with intention even if you\'re still deciding.`}
-              </p>
+          </div>
+          <div className="flex items-center gap-5 text-white/80">
+            <VideoCameraIcon className="h-5 w-5" />
+            <PhoneIcon className="h-5 w-5" />
+            <EllipsisVerticalIcon className="h-5 w-5" />
+          </div>
+        </div>
+
+        <div ref={containerRef} className="flex-1 overflow-y-auto px-5 py-6" style={chatBackgroundStyle}>
+          <div className="space-y-4">
+            {groupedMessages.length ? (
+              groupedMessages.map((item) => {
+                if (item.type === 'day') {
+                  return (
+                    <div key={item.id} className="flex justify-center">
+                      <span className="rounded-full bg-[#e4e1db]/90 px-3 py-1 text-xs font-medium text-[#596568] shadow-sm">
+                        {item.label}
+                      </span>
+                    </div>
+                  );
+                }
+                const message = item.payload;
+                const isMine = message.senderId === currentUserId;
+                return (
+                  <div key={item.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+                    <div
+                      className={`relative max-w-[78%] rounded-2xl border px-3 py-2 text-[15px] leading-snug shadow-sm ${
+                        isMine
+                          ? 'rounded-br-md border-[#b7ddb0] bg-[#dcf8c6] text-[#1f2c34]'
+                          : 'rounded-bl-md border-[#dfe1dc] bg-white text-[#1f2c34]'
+                      }`}
+                    >
+                      <p className="whitespace-pre-wrap">{message.text}</p>
+                      <div className="mt-1 flex items-center justify-end gap-1 text-[11px] text-[#6a7175]">
+                        <span>{formatTime(message.createdAt)}</span>
+                        {isMine && (
+                          <span className="flex items-center text-[#34b7f1]" aria-label="Delivered">
+                            <CheckIcon className="h-3 w-3" />
+                            <CheckIcon className="h-3 w-3 -ml-2" />
+                          </span>
+                        )}
+                      </div>
+                      <span
+                        className={`absolute bottom-0 ${isMine ? 'right-[-6px]' : 'left-[-6px]'} h-3 w-3 rotate-45 ${
+                          isMine
+                            ? 'border-b border-r border-[#b7ddb0] bg-[#dcf8c6]'
+                            : 'border-b border-l border-[#dfe1dc] bg-white'
+                        }`}
+                        aria-hidden="true"
+                      />
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="mx-auto max-w-sm rounded-2xl border border-[#d1d7db] bg-white/95 p-5 text-center text-sm text-[#5d656a] shadow">
+                <p>
+                  {initiatedByMe
+                    ? 'Break the ice with a thoughtful note. Your message is saved so you can keep building momentum.'
+                    : 'They already liked you. Reply with intention to keep the connection moving forward.'}
+                </p>
+              </div>
             )}
           </div>
         </div>
 
-        <div ref={containerRef} className="mt-5 max-h-80 overflow-y-auto pr-1">
-          {messages.length ? (
-            <ul className="flex flex-col gap-3">
-              {messages.map((message) => {
-                const isMine = message.senderId === currentUserId;
-                return (
-                  <li key={message.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                    <div
-                      className={`max-w-[75%] rounded-2xl px-4 py-2 text-sm shadow ${
-                        isMine ? 'bg-brand-dark text-white' : 'bg-slate-100 text-slate-700'
-                      }`}
-                    >
-                      <p>{message.text}</p>
-                      <p className="mt-1 text-[10px] uppercase tracking-wide opacity-70">
-                        {new Date(message.createdAt).toLocaleString()}
-                      </p>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          ) : (
-            <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500">
-              <p>
-                Break the ice with a message that reflects your shared intentions. We&apos;ll suggest prompts as the concierge evolves.
-              </p>
-            </div>
-          )}
-        </div>
+        {error && <p className="px-6 pb-1 text-sm text-rose-600">{error}</p>}
 
-        {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
-
-        <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-3 sm:flex-row">
-          <input
-            type="text"
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            placeholder="Write an intentional opener..."
-            className="flex-1 rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-700 focus:border-brand-dark focus:outline-none"
-          />
-          <button
-            type="submit"
-            disabled={sending || !draft.trim()}
-            className="rounded-full bg-brand-dark px-6 py-2 text-sm font-semibold uppercase tracking-wide text-white transition hover:bg-brand-dark/90 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {sending ? 'Sending...' : 'Send note'}
-          </button>
+        <form onSubmit={handleSubmit} className="border-t border-[#d1d7db] bg-[#f0f2f5] px-5 py-4">
+          <div className="flex items-end gap-2 rounded-full bg-white px-3 py-2 shadow-sm">
+            <button
+              type="button"
+              onClick={handleInsertEmoji}
+              className="flex h-10 w-10 items-center justify-center text-[#54656f] transition hover:text-[#075E54]"
+              aria-label="Add emoji"
+            >
+              <FaceSmileIcon className="h-6 w-6" />
+            </button>
+            <button
+              type="button"
+              onClick={handleAttachmentClick}
+              className="flex h-10 w-10 items-center justify-center text-[#54656f] transition hover:text-[#075E54]"
+              aria-label="Add attachment"
+            >
+              <PaperClipIcon className="h-6 w-6 rotate-45" />
+            </button>
+            <textarea
+              ref={textareaRef}
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={handleComposerKeyDown}
+              placeholder="Type a message"
+              rows={1}
+              className="max-h-40 flex-1 resize-none border-0 bg-transparent text-[15px] text-[#1f2c34] outline-none focus:ring-0"
+            />
+            <button
+              type="button"
+              onClick={handleAttachmentClick}
+              className="flex h-10 w-10 items-center justify-center text-[#54656f] transition hover:text-[#075E54]"
+              aria-label="Open camera"
+            >
+              <CameraIcon className="h-6 w-6" />
+            </button>
+            <input
+              ref={attachmentInputRef}
+              type="file"
+              accept="image/*,video/*"
+              multiple
+              className="hidden"
+              onChange={handleAttachmentChange}
+            />
+            {hasDraft ? (
+              <button
+                type="submit"
+                disabled={sending}
+                className="flex h-11 w-11 items-center justify-center rounded-full bg-[#008069] text-white transition hover:bg-[#006f5c] disabled:opacity-60"
+                aria-label="Send message"
+              >
+                <PaperAirplaneIcon className="h-5 w-5 -rotate-45" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setDraft('Sending a quick voice note...')}
+                className="flex h-11 w-11 items-center justify-center rounded-full bg-[#00A884] text-white transition hover:bg-[#02926f]"
+                aria-label="Record voice message"
+              >
+                <MicrophoneIcon className="h-5 w-5" />
+              </button>
+            )}
+          </div>
         </form>
       </div>
     </div>

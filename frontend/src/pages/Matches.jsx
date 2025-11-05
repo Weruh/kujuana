@@ -1,8 +1,25 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { CheckIcon } from "@heroicons/react/24/solid";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { api, useAuthStore } from "../store/auth.js";
 
 const sortKey = (match) => new Date(match.updatedAt || match.matchedAt || match.createdAt || 0).getTime();
+
+const sameCalendarDay = (a, b) =>
+  a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+const formatRelativeDay = (isoDate) => {
+  if (!isoDate) return "--";
+  const date = new Date(isoDate);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+
+  if (sameCalendarDay(date, today)) return "Today";
+  if (sameCalendarDay(date, yesterday)) return "Yesterday";
+  return date.toLocaleDateString(undefined, { weekday: "long" });
+};
 
 const Matches = () => {
   const [matches, setMatches] = useState([]);
@@ -69,68 +86,57 @@ const Matches = () => {
         )}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        {sortedMatches.map((match) => {
+      <div className="space-y-3">
+        {sortedMatches.map((match, index) => {
           const status = match.status || "matched";
           const isPending = status !== "matched";
-          const counterpart = match.members.find((member) => member.id !== user?.id) || match.members[0];
-          const counterpartName = counterpart?.firstName || "your match";
-          const awaitingMemberId = match.awaitingMemberId;
-          const awaitingMember = match.members.find((member) => member.id === awaitingMemberId);
-          const awaitingName = awaitingMember?.firstName || counterpartName;
-          const awaitingIsMe = awaitingMemberId && awaitingMemberId === user?.id;
-          const initiatedBy = match.initiatedBy;
-          const initiatedByMe = initiatedBy === user?.id;
-          const createdOn = match.createdAt ? new Date(match.createdAt).toLocaleDateString() : null;
-          const matchedOn = match.matchedAt ? new Date(match.matchedAt).toLocaleDateString() : createdOn;
-          const badgeClasses = isPending ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700";
-          const badgeLabel = isPending ? "Awaiting reply" : "Mutual match";
-          const summary = isPending
-            ? initiatedByMe
-              ? `You liked ${counterpartName}${createdOn ? ` on ${createdOn}` : ""}.`
-              : `${counterpartName} liked you${createdOn ? ` on ${createdOn}` : ""}.`
-            : `Matched on ${matchedOn || "-"}.`;
-          const description = isPending
-            ? initiatedByMe
-              ? awaitingIsMe
-                ? "Waiting for you to respond. A thoughtful message can move the connection forward."
-                : `Waiting for ${awaitingName} to respond. A thoughtful message can move the connection forward.`
-              : `${counterpartName} reached out first. Send an intentional reply or update your preferences.`
-            : "Lean into authentic conversation. Share intentions, plan your first meeting, and nurture purpose.";
+          const members = match.members || [];
+          const counterpart = members.find((member) => member.id !== user?.id) || members[0];
+          const counterpartName = counterpart
+            ? counterpart.firstName || counterpart.lastName || "Your match"
+            : "Your match";
+          const avatarUrl = counterpart?.photoUrls?.[0] || null;
+          const avatarInitial = (counterpart?.firstName?.[0] || counterpart?.lastName?.[0] || counterpartName?.[0] || "Y").toUpperCase();
+          const conversation = match.conversation || [];
+          const lastMessage = conversation.length ? conversation[conversation.length - 1] : null;
+          const awaitingMember = members.find((member) => member.id === match.awaitingMemberId);
+          const lastMessageText = lastMessage?.text?.trim();
+          const lastMessagePreview = lastMessageText
+            ? lastMessageText
+            : isPending
+            ? match.initiatedBy === user?.id
+              ? `Waiting for ${awaitingMember?.firstName || counterpartName} to respond`
+              : `${counterpartName} liked you. Say hi!`
+            : "Start a thoughtful conversation.";
+          const lastActivity = lastMessage?.createdAt || match.updatedAt || match.matchedAt || match.createdAt;
+          const dayLabel = formatRelativeDay(lastActivity);
+          const rowClasses = `flex w-full items-center gap-4 rounded-3xl border border-transparent px-4 py-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${index === 0 ? "bg-slate-50" : "bg-white"}`;
+          const ringClasses = `flex h-12 w-12 flex-none items-center justify-center rounded-full border-2 p-[2px] ${isPending ? "border-amber-400" : "border-emerald-500"}`;
+          const checkClasses = `h-4 w-4 flex-none ${isPending ? "text-amber-500" : "text-emerald-500"}`;
 
           return (
-            <div key={match.id} className="flex flex-col gap-4 rounded-3xl bg-white p-6 shadow">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-4">
-                  {match.members.slice(0, 2).map((member) => {
-                    const label = [member.firstName, member.lastName].filter(Boolean).join(" ") || "Match";
-                    return (
-                      <div
-                        key={member.id}
-                        className="flex h-16 min-w-[4rem] items-center justify-center rounded-2xl bg-brand-dark px-3 text-center text-sm font-semibold text-white shadow"
-                        title={label}
-                      >
-                        <span className="max-w-[5rem] whitespace-normal leading-tight">{label}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-                <span className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-wide ${badgeClasses}`}>
-                  {badgeLabel}
+            <button key={match.id} type="button" onClick={() => handleOpenConcierge(match)} className={rowClasses}>
+              <span className={ringClasses}>
+                <span className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-slate-200 text-sm font-semibold uppercase text-slate-600">
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt={`${counterpartName} avatar`} className="h-full w-full object-cover" />
+                  ) : (
+                    avatarInitial
+                  )}
                 </span>
+              </span>
+              <div className="flex flex-1 flex-col gap-1">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-slate-900">{counterpartName}</p>
+                  <span className="text-xs text-slate-400">{dayLabel}</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-slate-500">
+                  <CheckIcon className={checkClasses} />
+                  <span className="flex-1 truncate">{lastMessagePreview}</span>
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-semibold text-slate-700">{summary}</p>
-                <p className="text-sm text-slate-500">{description}</p>
-              </div>
-              <button
-                type="button"
-                className="self-start rounded-full border border-brand-dark px-5 py-2 text-sm font-semibold text-brand-dark transition hover:bg-brand/5"
-                onClick={() => handleOpenConcierge(match)}
-              >
-                {isPending ? "Send a note" : "Open message concierge"}
-              </button>
-            </div>
+              <ChevronDownIcon className="h-4 w-4 flex-none text-slate-400" />
+            </button>
           );
         })}
       </div>

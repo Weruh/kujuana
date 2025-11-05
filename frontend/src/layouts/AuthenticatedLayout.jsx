@@ -19,10 +19,13 @@ const AuthenticatedLayout = () => {
     navigate('/');
   };
 
+  const avatarUrl = user?.photoUrls?.[0];
+  const avatarInitial = (user?.firstName?.[0] || user?.email?.[0] || 'U').toUpperCase();
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#f6eeff] via-[#f1e6ff] to-[#f9f2ff]">
       <header className="bg-white/80 shadow-sm backdrop-blur">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <Logo />
           <nav className="hidden items-center gap-6 text-sm font-semibold text-slate-600 sm:flex">
             {navItems.map((item) => (
@@ -39,9 +42,22 @@ const AuthenticatedLayout = () => {
           </nav>
           <div className="flex items-center gap-4">
             {user && (
-              <div className="hidden text-right text-sm sm:block">
-                <p className="font-semibold text-slate-900">{user.firstName}</p>
-                <p className="text-xs uppercase tracking-wide text-slate-400">{user.plan?.replace('-', ' ') || 'Free'}</p>
+              <div className="hidden items-center gap-3 sm:flex">
+                <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-brand/20 text-sm font-semibold uppercase text-brand-dark">
+                  {avatarUrl ? (
+                    <img
+                      src={avatarUrl}
+                      alt={`${user.firstName || 'Kujuana'} avatar`}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    avatarInitial
+                  )}
+                </div>
+                <div className="text-right text-sm">
+                  <p className="font-semibold text-slate-900">{user.firstName}</p>
+                  <p className="text-xs uppercase tracking-wide text-slate-400">{user.plan?.replace('-', ' ') || 'Free'}</p>
+                </div>
               </div>
             )}
             <button
@@ -54,7 +70,7 @@ const AuthenticatedLayout = () => {
           </div>
         </div>
       </header>
-      <main className="mx-auto flex w-full max-w-5xl flex-col items-center px-4 py-10">
+      <main className="mx-auto flex w-full max-w-7xl flex-col items-center px-6 py-12">
         <Outlet />
       </main>
     </div>
@@ -62,5 +78,7 @@ const AuthenticatedLayout = () => {
 };
 
 export default AuthenticatedLayout;
+
+
 
 

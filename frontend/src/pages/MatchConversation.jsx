@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeftIcon, PaperAirplaneIcon } from "@heroicons/react/24/solid";
+import {
+  ArrowLeftIcon,
+  PaperAirplaneIcon,
+  PhoneIcon,
+  VideoCameraIcon,
+  MicrophoneIcon,
+} from "@heroicons/react/24/solid";
+import { EllipsisVerticalIcon, FaceSmileIcon, PaperClipIcon, CameraIcon } from "@heroicons/react/24/outline";
+import { CheckIcon } from "@heroicons/react/20/solid";
 import { api, useAuthStore } from "../store/auth.js";
 
 const formatDayLabel = (isoDate) => {
@@ -19,6 +27,13 @@ const formatDayLabel = (isoDate) => {
 
 const formatTime = (isoDate) => new Date(isoDate).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 
+const chatBackgroundStyle = {
+  backgroundColor: "#efeae2",
+  backgroundImage:
+    "url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27320%27 height=%27320%27 fill=%27none%27 viewBox=%270 0 160 160%27%3E%3Cg opacity=%270.22%27%3E%3Cpath fill=%23f7f2eb d=%27M0 0h160v160H0z%27/%3E%3Cpath stroke=%23d5c7b5 stroke-width=%271.6%27 d=%27M15 15h40v40H15zM105 15h40v40h-40zM60 105h40v40H60z%27/%3E%3Cpath stroke=%23d5c7b5 stroke-linecap=%27round%27 stroke-width=%271.6%27 d=%27M60 15l20 20 20-20M15 95l20 20-20 20M125 95l20 20-20 20%27/%3E%3C/g%3E%3C/svg%3E')",
+  backgroundSize: "360px",
+};
+
 const MatchConversation = () => {
   const { matchId } = useParams();
   const navigate = useNavigate();
@@ -29,6 +44,8 @@ const MatchConversation = () => {
   const [error, setError] = useState("");
   const [draft, setDraft] = useState("");
   const scrollRef = useRef(null);
+  const textareaRef = useRef(null);
+  const attachmentInputRef = useRef(null);
 
   useEffect(() => {
     const loadMatch = async () => {
@@ -64,6 +81,14 @@ const MatchConversation = () => {
     }
   }, [match?.conversation?.length]);
 
+  useEffect(() => {
+    if (!textareaRef.current) return;
+    const element = textareaRef.current;
+    element.style.height = "auto";
+    const nextHeight = Math.min(element.scrollHeight, 160);
+    element.style.height = `${nextHeight}px`;
+  }, [draft]);
+
   const partner = useMemo(() => {
     if (!match?.members?.length) return null;
     if (!currentUserId) return match.members[0];
@@ -87,11 +112,11 @@ const MatchConversation = () => {
   }, [messages]);
 
   const isPending = (match?.status || "matched") !== "matched";
+  const statusText = isPending ? "waiting for a response" : "online";
 
-  const handleSend = async (event) => {
-    event.preventDefault();
+  const submitMessage = async () => {
     const text = draft.trim();
-    if (!text || !matchId) return;
+    if (!text || !matchId || sending) return;
     setSending(true);
     try {
       const { data } = await api.post(`/match/${matchId}/messages`, { text });
@@ -109,116 +134,219 @@ const MatchConversation = () => {
     }
   };
 
+  const handleSend = async (event) => {
+    event.preventDefault();
+    await submitMessage();
+  };
+
+  const handleComposerKeyDown = async (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      await submitMessage();
+    }
+  };
+
+  const handleInsertEmoji = () => {
+    setDraft((prev) => `${prev}${prev ? " " : ""}:)`);
+  };
+
+  const handleAttachmentClick = () => {
+    attachmentInputRef.current?.click();
+  };
+
+  const handleAttachmentChange = (event) => {
+    const files = Array.from(event.target.files || []);
+    if (!files.length) return;
+    const names = files.map((file) => file.name).join(", ");
+    setDraft((prev) => `${prev}${prev ? "\n" : ""}[Attachment: ${names}]`);
+    event.target.value = "";
+    textareaRef.current?.focus();
+  };
+
   const handleBack = () => {
     navigate("/matches");
   };
 
+  const hasDraft = draft.trim().length > 0;
+
+  if (loading) {
+    return (
+      <div className="flex h-[78vh] items-center justify-center rounded-[2rem] border border-[#d1d7db] bg-white/90 text-sm font-semibold text-slate-500 shadow-lg">
+        Loading conversation...
+      </div>
+    );
+  }
+
+  if (!match) {
+    return (
+      <div className="flex h-[78vh] flex-col items-center justify-center gap-4 rounded-[2rem] border border-[#d1d7db] bg-white/90 text-center shadow">
+        <p className="max-w-sm text-sm text-slate-600">{error || "We couldn't find that conversation."}</p>
+        <button
+          type="button"
+          onClick={handleBack}
+          className="rounded-full bg-brand-dark px-6 py-2 text-sm font-semibold text-white shadow transition hover:bg-brand-dark/90"
+        >
+          View matches
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex w-full flex-col gap-6">
-      <button
-        type="button"
-        onClick={handleBack}
-        className="flex w-fit items-center gap-2 rounded-full border border-brand-dark/60 bg-white/60 px-4 py-2 text-sm font-semibold text-brand-dark transition hover:bg-brand/20"
-      >
-        <ArrowLeftIcon className="h-4 w-4" />
-        Back to matches
-      </button>
-
-      {loading ? (
-        <div className="flex h-[70vh] items-center justify-center rounded-[2.5rem] bg-white/80 text-sm font-semibold text-slate-500 shadow-lg">
-          Loading conversation...
-        </div>
-      ) : match ? (
-        <div className="flex h-[70vh] flex-col overflow-hidden rounded-[2.5rem] bg-white/80 shadow-xl backdrop-blur">
-          <div className="border-b border-white/40 bg-gradient-to-r from-brand-dark to-[#b089ff] px-6 py-5 text-white">
-            <div className="flex items-center gap-4">
-              <img
-                src={partner?.photoUrls?.[0] || `https://api.dicebear.com/7.x/initials/svg?seed=${partner?.firstName || "Kujuana"}`}
-                alt={partner?.firstName}
-                className="h-14 w-14 rounded-2xl object-cover shadow-lg"
-              />
-              <div className="flex flex-col">
-                <span className="text-xs uppercase tracking-[0.35em] text-white/70">Message concierge</span>
-                <h1 className="text-2xl font-semibold leading-tight">{partner ? partner.firstName : "Your match"}</h1>
-                <span className="text-xs text-white/70">
-                  {isPending ? "Awaiting a mutual like" : "You both liked each other - keep the momentum."}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto bg-gradient-to-b from-transparent via-white/60 to-white px-4 py-6">
-            {groupedMessages.length ? (
-              groupedMessages.map((item) => {
-                if (item.type === "day") {
-                  return (
-                    <div key={item.id} className="flex justify-center">
-                      <span className="rounded-full bg-white/80 px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400 shadow">
-                        {item.label}
-                      </span>
-                    </div>
-                  );
-                }
-                const message = item.payload;
-                const isMine = message.senderId === currentUserId;
-                return (
-                  <div key={item.id} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
-                    <div
-                      className={`max-w-[75%] rounded-3xl px-4 py-3 text-sm shadow-md transition ${
-                        isMine ? "bg-brand-dark text-white" : "bg-white text-slate-700"
-                      }`}
-                    >
-                      <p className="whitespace-pre-wrap leading-relaxed">{message.text}</p>
-                      <span className={`mt-2 block text-[10px] uppercase tracking-[0.2em] ${isMine ? "text-white/70" : "text-slate-400"}`}>
-                        {formatTime(message.createdAt)}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="mx-auto max-w-sm rounded-3xl bg-white/90 p-5 text-center text-sm text-slate-500 shadow">
-                Break the ice with an intentional note. We&apos;ll keep your history so the story feels continuous.
-              </div>
-            )}
-          </div>
-
-          {error && <p className="px-6 text-sm text-rose-600">{error}</p>}
-
-          <form onSubmit={handleSend} className="border-t border-white/60 bg-white/80 px-4 py-4">
-            <div className="flex items-end gap-3 rounded-3xl bg-white/90 px-4 py-3 shadow">
-              <textarea
-                value={draft}
-                onChange={(event) => setDraft(event.target.value)}
-                placeholder="Send a thoughtful message..."
-                rows={1}
-                className="max-h-32 flex-1 resize-none border-0 bg-transparent text-sm text-slate-700 outline-none focus:ring-0"
-              />
-              <button
-                type="submit"
-                disabled={sending || !draft.trim()}
-                className="flex items-center gap-2 rounded-full bg-brand-dark px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark/90 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <span>{sending ? "Sending" : "Send"}</span>
-                <PaperAirplaneIcon className="h-4 w-4" />
-              </button>
-            </div>
-          </form>
-        </div>
-      ) : (
-        <div className="flex h-[70vh] flex-col items-center justify-center gap-4 rounded-[2.5rem] bg-white/80 text-center shadow">
-          <p className="max-w-sm text-sm text-slate-600">{error || "We couldn\'t find that conversation."}</p>
+    <div className="flex h-[78vh] flex-col overflow-hidden rounded-[2rem] border border-[#d1d7db] bg-[#f0f2f5] shadow-xl">
+      <div className="flex items-center justify-between bg-[#075E54] px-6 py-5 text-white shadow">
+        <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={handleBack}
-            className="rounded-full bg-brand-dark px-6 py-2 text-sm font-semibold text-white shadow transition hover:bg-brand-dark/90"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
+            aria-label="Back to matches"
           >
-            View matches
+            <ArrowLeftIcon className="h-5 w-5" />
           </button>
+          <img
+            src={partner?.photoUrls?.[0] || `https://api.dicebear.com/7.x/initials/svg?seed=${partner?.firstName || "Kujuana"}`}
+            alt={partner?.firstName}
+            className="h-12 w-12 rounded-full border-2 border-white/30 object-cover shadow"
+          />
+          <div className="leading-tight">
+            <h1 className="text-lg font-semibold">{partner ? partner.firstName : "Your match"}</h1>
+            <div className="flex items-center gap-2 text-xs text-white/80">
+              <span className="inline-flex h-1.5 w-1.5 rounded-full bg-[#25D366]" aria-hidden="true" />
+              <span className="capitalize">{statusText}</span>
+            </div>
+          </div>
         </div>
-      )}
+        <div className="flex items-center gap-5 text-white/80">
+          <VideoCameraIcon className="h-5 w-5" />
+          <PhoneIcon className="h-5 w-5" />
+          <EllipsisVerticalIcon className="h-5 w-5" />
+        </div>
+      </div>
+
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-6" style={chatBackgroundStyle}>
+        <div className="space-y-4">
+          {groupedMessages.length ? (
+            groupedMessages.map((item) => {
+              if (item.type === "day") {
+                return (
+                  <div key={item.id} className="flex justify-center">
+                    <span className="rounded-full bg-[#e4e1db]/90 px-3 py-1 text-xs font-medium text-[#596568] shadow-sm">
+                      {item.label}
+                    </span>
+                  </div>
+                );
+              }
+              const message = item.payload;
+              const isMine = message.senderId === currentUserId;
+              return (
+                <div key={item.id} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
+                  <div
+                    className={`relative max-w-[82%] rounded-2xl border px-3 py-2 text-[15px] leading-snug shadow-sm ${
+                      isMine
+                        ? "rounded-br-md border-[#b7ddb0] bg-[#dcf8c6] text-[#1f2c34]"
+                        : "rounded-bl-md border-[#dfe1dc] bg-white text-[#1f2c34]"
+                    }`}
+                  >
+                    <p className="whitespace-pre-wrap">{message.text}</p>
+                    <div className="mt-1 flex items-center justify-end gap-1 text-[11px] text-[#6a7175]">
+                      <span>{formatTime(message.createdAt)}</span>
+                      {isMine && (
+                        <span className="flex items-center text-[#34b7f1]" aria-label="Delivered">
+                          <CheckIcon className="h-3 w-3" />
+                          <CheckIcon className="h-3 w-3 -ml-2" />
+                        </span>
+                      )}
+                    </div>
+                    <span
+                      className={`absolute bottom-0 ${isMine ? "right-[-6px]" : "left-[-6px]"} h-3 w-3 rotate-45 ${
+                        isMine
+                          ? "border-b border-r border-[#b7ddb0] bg-[#dcf8c6]"
+                          : "border-b border-l border-[#dfe1dc] bg-white"
+                      }`}
+                      aria-hidden="true"
+                    />
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="mx-auto max-w-sm rounded-2xl border border-[#d1d7db] bg-white/95 p-5 text-center text-sm text-[#5d656a] shadow">
+              Break the ice with a thoughtful note. Your conversation history stays here.
+            </div>
+          )}
+        </div>
+      </div>
+
+      {error && <p className="px-6 pb-1 text-sm text-rose-600">{error}</p>}
+
+      <form onSubmit={handleSend} className="border-t border-[#d1d7db] bg-[#f0f2f5] px-5 py-4">
+        <div className="flex items-end gap-2 rounded-full bg-white px-3 py-2 shadow-sm">
+          <button
+            type="button"
+            onClick={handleInsertEmoji}
+            className="flex h-10 w-10 items-center justify-center text-[#54656f] transition hover:text-[#075E54]"
+            aria-label="Add emoji"
+          >
+            <FaceSmileIcon className="h-6 w-6" />
+          </button>
+          <button
+            type="button"
+            onClick={handleAttachmentClick}
+            className="flex h-10 w-10 items-center justify-center text-[#54656f] transition hover:text-[#075E54]"
+            aria-label="Add attachment"
+          >
+            <PaperClipIcon className="h-6 w-6 rotate-45" />
+          </button>
+          <textarea
+            ref={textareaRef}
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={handleComposerKeyDown}
+            placeholder="Type a message"
+            rows={1}
+            className="max-h-40 flex-1 resize-none border-0 bg-transparent text-[15px] text-[#1f2c34] outline-none focus:ring-0"
+          />
+          <button
+            type="button"
+            onClick={handleAttachmentClick}
+            className="flex h-10 w-10 items-center justify-center text-[#54656f] transition hover:text-[#075E54]"
+            aria-label="Open camera"
+          >
+            <CameraIcon className="h-6 w-6" />
+          </button>
+          <input
+            ref={attachmentInputRef}
+            type="file"
+            accept="image/*,video/*"
+            multiple
+            className="hidden"
+            onChange={handleAttachmentChange}
+          />
+          {hasDraft ? (
+            <button
+              type="submit"
+              disabled={sending}
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-[#008069] text-white transition hover:bg-[#006f5c] disabled:opacity-60"
+              aria-label="Send message"
+            >
+              <PaperAirplaneIcon className="h-5 w-5 -rotate-45" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setDraft("Sending a quick voice note...")}
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-[#00A884] text-white transition hover:bg-[#02926f]"
+              aria-label="Record voice message"
+            >
+              <MicrophoneIcon className="h-5 w-5" />
+            </button>
+          )}
+        </div>
+      </form>
     </div>
   );
 };
 
 export default MatchConversation;
+

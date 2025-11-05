@@ -8,6 +8,7 @@ import { useAuthStore, api } from '../store/auth.js';
 
 const Profile = () => {
   const fetchProfile = useAuthStore((state) => state.fetchProfile);
+  const setUser = useAuthStore((state) => state.setUser);
   const [profile, setProfile] = useState(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -41,6 +42,40 @@ const Profile = () => {
     }));
   };
 
+  const handlePhotoUpload = async (event) => {
+    const input = event.target;
+    const files = Array.from(input.files || []);
+    if (!files.length) return;
+
+    const readFile = (file) =>
+      new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('Could not read file.'));
+        reader.readAsDataURL(file);
+      });
+
+    try {
+      const uploadedImages = await Promise.all(files.map(readFile));
+      setProfile((prev) => ({
+        ...prev,
+        photoUrls: [...(prev.photoUrls || []), ...uploadedImages],
+      }));
+    } catch (error) {
+      console.error(error);
+      setMessage('Some photos could not be processed. Please try different files.');
+    } finally {
+      input.value = '';
+    }
+  };
+
+  const handlePhotoRemove = (index) => {
+    setProfile((prev) => ({
+      ...prev,
+      photoUrls: (prev.photoUrls || []).filter((_, idx) => idx !== index),
+    }));
+  };
+
   const handleSave = async () => {
     setSaving(true);
     setMessage('');
@@ -48,7 +83,9 @@ const Profile = () => {
       const payload = {
         ...profile,
       };
-      await api.put('/profile/me', payload);
+      const { data } = await api.put('/profile/me', payload);
+      setProfile(data.data);
+      setUser(data.data);
       setMessage('Profile updated. Stay intentional.');
     } catch (error) {
       setMessage(error.response?.data?.message || 'Could not update profile.');
@@ -57,12 +94,14 @@ const Profile = () => {
     }
   };
 
+  const photoUrls = profile.photoUrls || [];
+
   const checklist = [
     { label: 'Bio added', completed: Boolean(profile.bio) },
     { label: 'Interests (3+)', completed: profile.interests?.length >= 3 },
     { label: 'Goals set', completed: profile.goals?.length > 0 },
     { label: 'Preferences set', completed: Boolean(profile.preferences) },
-    { label: 'Photos added', completed: profile.photoUrls?.length > 0 },
+    { label: 'Photos added', completed: photoUrls.length > 0 },
   ];
 
   return (
@@ -128,6 +167,55 @@ const Profile = () => {
               onChange={(event) => handleChange('bio', event.target.value)}
             />
           </label>
+        </div>
+
+        <div className="rounded-3xl bg-white p-8 shadow">
+          <h2 className="text-xl font-semibold text-slate-800">Photos</h2>
+          <p className="text-sm text-slate-500">Upload clear photos to help others get to know you.</p>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <label className="flex cursor-pointer items-center gap-2 rounded-full border border-dashed border-brand-dark px-4 py-2 text-sm font-semibold text-brand-dark hover:bg-brand/10">
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handlePhotoUpload}
+              />
+              <span>Upload photos</span>
+            </label>
+            {photoUrls.length ? (
+              <span className="text-xs text-slate-500">
+                {photoUrls.length} photo{photoUrls.length > 1 ? 's' : ''} uploaded
+              </span>
+            ) : null}
+          </div>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {photoUrls.length ? (
+              photoUrls.map((url, index) => (
+                <div
+                  key={`photo-${index}`}
+                  className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-50"
+                >
+                  <img
+                    src={url}
+                    alt={`Profile photo ${index + 1}`}
+                    className="h-48 w-full object-cover transition duration-200 group-hover:scale-105"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handlePhotoRemove(index)}
+                    className="absolute right-3 top-3 rounded-full bg-slate-900/80 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white opacity-0 transition duration-200 group-hover:opacity-100"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))
+            ) : (
+              <p className="col-span-full rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-500">
+                Add at least one photo to boost your introductions.
+              </p>
+            )}
+          </div>
         </div>
 
         <div className="rounded-3xl bg-white p-8 shadow">
