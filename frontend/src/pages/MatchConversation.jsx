@@ -13,6 +13,7 @@ import {
 import { EllipsisVerticalIcon, FaceSmileIcon, PaperClipIcon, CameraIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { CheckIcon } from '@heroicons/react/20/solid';
 import { api, useAuthStore } from '../store/auth.js';
+import EmojiPicker from '../components/EmojiPicker.jsx';
 
 const formatDayLabel = (isoDate) => {
   const date = new Date(isoDate);
@@ -70,6 +71,9 @@ const MatchConversation = () => {
   const scrollRef = useRef(null);
   const textareaRef = useRef(null);
   const attachmentInputRef = useRef(null);
+  const emojiButtonRef = useRef(null);
+
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
 
   const [pendingVoiceNote, setPendingVoiceNote] = useState(null);
   const [recordingError, setRecordingError] = useState('');
@@ -88,9 +92,16 @@ const MatchConversation = () => {
   const [videoCallError, setVideoCallError] = useState('');
   const [isMicEnabled, setIsMicEnabled] = useState(true);
   const [isCameraEnabled, setIsCameraEnabled] = useState(true);
+  const [isVoiceCallOpen, setIsVoiceCallOpen] = useState(false);
+  const [isVoiceCallConnecting, setIsVoiceCallConnecting] = useState(false);
+  const [voiceCallError, setVoiceCallError] = useState('');
+  const [isVoiceMuted, setIsVoiceMuted] = useState(false);
+  const [voiceCallDuration, setVoiceCallDuration] = useState(0);
 
   const localVideoRef = useRef(null);
   const localStreamRef = useRef(null);
+  const voiceCallStreamRef = useRef(null);
+  const voiceCallTimerRef = useRef(null);
 
   const cleanupVoiceNote = useCallback(() => {
     setPendingVoiceNote((prev) => {
@@ -112,6 +123,12 @@ const MatchConversation = () => {
       }
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach((track) => track.stop());
+      }
+      if (voiceCallTimerRef.current) {
+        clearInterval(voiceCallTimerRef.current);
+      }
+      if (voiceCallStreamRef.current) {
+        voiceCallStreamRef.current.getTracks().forEach((track) => track.stop());
       }
     };
   }, [cleanupVoiceNote]);
@@ -367,11 +384,24 @@ const MatchConversation = () => {
     }
   };
 
-  const handleInsertEmoji = () => {
-    setDraft((prev) => `${prev}${prev ? ' ' : ''}:)`);
-  };
+  const handleToggleEmojiPicker = useCallback(() => {
+    setIsEmojiPickerOpen((prev) => !prev);
+  }, []);
+
+  const handleEmojiSelect = useCallback((emoji) => {
+    if (!emoji) return;
+    setDraft((prev) => {
+      const needsSpacer = prev && !/\s$/.test(prev);
+      return `${prev}${needsSpacer ? ' ' : ''}${emoji}`;
+    });
+    setIsEmojiPickerOpen(false);
+    setTimeout(() => {
+      textareaRef.current?.focus();
+    }, 0);
+  }, []);
 
   const handleAttachmentClick = () => {
+    setIsEmojiPickerOpen(false);
     attachmentInputRef.current?.click();
   };
 
@@ -388,10 +418,29 @@ const MatchConversation = () => {
     navigate('/matches');
   };
 
+  const handleStartVoiceCall = () => {
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+      setVoiceCallError('Voice calls are not supported in this browser.');
+      return;
+    }
+    setVoiceCallError('');
+    if (isVideoCallOpen) {
+      setIsVideoCallOpen(false);
+    }
+    setIsVoiceCallOpen(true);
+  };
+
+  const handleEndVoiceCall = () => {
+    setIsVoiceCallOpen(false);
+  };
+
   const handleStartVideoCall = () => {
     if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
       setError('Video calls are not supported in this browser.');
       return;
+    }
+    if (isVoiceCallOpen) {
+      setIsVoiceCallOpen(false);
     }
     setVideoCallError('');
     setIsVideoCallOpen(true);
@@ -453,6 +502,68 @@ const MatchConversation = () => {
     };
   }, [isVideoCallOpen]);
 
+  useEffect(() => {
+    if (!isVoiceCallOpen) {
+      return;
+    }
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+      setVoiceCallError('Voice calls are not supported on this device.');
+      return;
+    }
+    let cancelled = false;
+    setIsVoiceCallConnecting(true);
+    navigator.mediaDevices
+      .getUserMedia({ audio: true })
+      .then((stream) => {
+        if (cancelled) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+        voiceCallStreamRef.current = stream;
+        stream.getAudioTracks().forEach((track) => {
+          track.enabled = true;
+        });
+        setIsVoiceMuted(false);
+        setVoiceCallDuration(0);
+        setIsVoiceCallConnecting(false);
+        voiceCallTimerRef.current = setInterval(() => {
+          setVoiceCallDuration((prev) => prev + 1);
+        }, 1000);
+      })
+      .catch((err) => {
+        console.error(err);
+        if (!cancelled) {
+          setVoiceCallError('We could not access your microphone. Check your browser permissions.');
+          setIsVoiceCallConnecting(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+      setIsVoiceCallConnecting(false);
+      if (voiceCallTimerRef.current) {
+        clearInterval(voiceCallTimerRef.current);
+        voiceCallTimerRef.current = null;
+      }
+      if (voiceCallStreamRef.current) {
+        voiceCallStreamRef.current.getTracks().forEach((track) => track.stop());
+        voiceCallStreamRef.current = null;
+      }
+      setIsVoiceMuted(false);
+      setVoiceCallDuration(0);
+    };
+  }, [isVoiceCallOpen]);
+
+  const toggleVoiceMute = () => {
+    const stream = voiceCallStreamRef.current;
+    if (!stream) return;
+    const nextMuted = !isVoiceMuted;
+    stream.getAudioTracks().forEach((track) => {
+      track.enabled = !nextMuted;
+    });
+    setIsVoiceMuted(nextMuted);
+  };
+
   const toggleMic = () => {
     const stream = localStreamRef.current;
     if (!stream) return;
@@ -475,6 +586,22 @@ const MatchConversation = () => {
 
   const hasDraft = draft.trim().length > 0;
   const canSend = hasDraft || Boolean(pendingVoiceNote);
+  const emojiButtonClasses = [
+    "flex h-10 w-10 items-center justify-center transition hover:text-[#075E54]",
+    isEmojiPickerOpen ? "text-[#075E54]" : "text-[#54656f]",
+  ].join(" ");
+
+  const voiceMuteButtonClasses = [
+    "flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition",
+    isVoiceMuted ? "bg-rose-600/80 hover:bg-rose-600" : "bg-white/10 hover:bg-white/20",
+  ].join(" ");
+
+  const voiceStatusMessage = voiceCallError
+    ? voiceCallError
+    : isVoiceCallConnecting
+    ? "Connecting to your microphone..."
+    : `Call in progress - ${formatDuration(voiceCallDuration)}`;
+
 
   if (loading) {
     return (
@@ -538,9 +665,9 @@ const MatchConversation = () => {
           </button>
           <button
             type="button"
-            className="cursor-not-allowed opacity-70"
-            aria-label="Voice call coming soon"
-            disabled
+            onClick={handleStartVoiceCall}
+            className="transition hover:text-white"
+            aria-label="Start voice call"
           >
             <PhoneIcon className="h-5 w-5" />
           </button>
@@ -658,11 +785,19 @@ const MatchConversation = () => {
       ) : null}
 
       <form onSubmit={handleSend} className="border-t border-[#d1d7db] bg-[#f0f2f5] px-5 py-4">
-        <div className="flex items-end gap-2 rounded-full bg-white px-3 py-2 shadow-sm">
+        <div className="relative flex items-end gap-2 rounded-full bg-white px-3 py-2 shadow-sm">
+          {isEmojiPickerOpen ? (
+            <EmojiPicker
+              anchorRef={emojiButtonRef}
+              onSelect={handleEmojiSelect}
+              onClose={() => setIsEmojiPickerOpen(false)}
+            />
+          ) : null}
           <button
             type="button"
-            onClick={handleInsertEmoji}
-            className="flex h-10 w-10 items-center justify-center text-[#54656f] transition hover:text-[#075E54]"
+            ref={emojiButtonRef}
+            onClick={handleToggleEmojiPicker}
+            className={emojiButtonClasses}
             aria-label="Add emoji"
           >
             <FaceSmileIcon className="h-6 w-6" />
@@ -731,6 +866,46 @@ const MatchConversation = () => {
         </div>
       </form>
 
+      {isVoiceCallOpen ? (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="relative flex w-[90%] max-w-md flex-col items-center gap-6 rounded-[32px] border border-white/15 bg-[#130834] px-8 py-10 text-white shadow-2xl">
+            <button
+              type="button"
+              onClick={handleEndVoiceCall}
+              className="absolute right-4 top-4 rounded-full bg-white/10 p-2 transition hover:bg-white/20"
+              aria-label="Close voice call"
+            >
+              <XMarkIcon className="h-5 w-5" />
+            </button>
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#4a3096]/35 text-white">
+              <PhoneIcon className="h-10 w-10 -rotate-45" />
+            </div>
+            <div className="text-center">
+              <p className="text-xl font-semibold">{partner?.firstName || 'Your match'}</p>
+              <p className="text-sm text-white/70">{voiceStatusMessage}</p>
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-4">
+              <button
+                type="button"
+                onClick={toggleVoiceMute}
+                className={voiceMuteButtonClasses}
+              >
+                {isVoiceMuted ? <NoSymbolIcon className="h-5 w-5" /> : <MicrophoneIcon className="h-5 w-5" />}
+                <span>{isVoiceMuted ? 'Unmute mic' : 'Mute mic'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleEndVoiceCall}
+                className="flex items-center gap-2 rounded-full bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-500"
+              >
+                <PhoneIcon className="h-5 w-5 -rotate-45" />
+                <span>End call</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {isVideoCallOpen ? (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
           <div className="relative flex w-[90%] max-w-4xl flex-col gap-4 rounded-[32px] border border-white/15 bg-[#0b031f] p-6 text-white shadow-2xl">
@@ -796,3 +971,4 @@ const MatchConversation = () => {
 };
 
 export default MatchConversation;
+

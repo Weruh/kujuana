@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeftIcon,
   PaperAirplaneIcon,
@@ -9,6 +9,7 @@ import {
 } from '@heroicons/react/24/solid';
 import { CheckIcon } from '@heroicons/react/20/solid';
 import { FaceSmileIcon, PaperClipIcon, CameraIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import EmojiPicker from './EmojiPicker.jsx';
 
 const FALLBACK_ROSTER = [
   { name: 'Keith', subtitle: 'Online', metric: '227.68' },
@@ -126,9 +127,14 @@ const MatchConversationModal = ({ match, currentUserId, sending, error, onClose,
   const containerRef = useRef(null);
   const textareaRef = useRef(null);
   const attachmentInputRef = useRef(null);
+  const emojiButtonRef = useRef(null);
+
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+
 
   useEffect(() => {
     setDraft('');
+    setIsEmojiPickerOpen(false);
   }, [match?.id]);
 
   useEffect(() => {
@@ -277,6 +283,12 @@ const MatchConversationModal = ({ match, currentUserId, sending, error, onClose,
   const initiatedByMe = match.initiatedBy === currentUserId;
   const hasDraft = draft.trim().length > 0;
 
+  const emojiButtonClasses = [
+    'flex h-11 w-11 items-center justify-center rounded-full bg-white/0 text-white/65 transition hover:bg-white/12 hover:text-white',
+    isEmojiPickerOpen ? 'bg-white/12 text-white' : '',
+  ].join(' ');
+
+
   const submitMessage = async () => {
     const text = draft.trim();
     if (!text || sending) return;
@@ -298,11 +310,24 @@ const MatchConversationModal = ({ match, currentUserId, sending, error, onClose,
     }
   };
 
-  const handleInsertEmoji = () => {
-    setDraft((prev) => `${prev}${prev ? ' ' : ''}:)`);
-  };
+  const handleToggleEmojiPicker = useCallback(() => {
+    setIsEmojiPickerOpen((prev) => !prev);
+  }, []);
+
+  const handleEmojiSelect = useCallback((emoji) => {
+    if (!emoji) return;
+    setDraft((prev) => {
+      const needsSpacer = prev && !/\s$/.test(prev);
+      return `${prev}${needsSpacer ? ' ' : ''}${emoji}`;
+    });
+    setIsEmojiPickerOpen(false);
+    setTimeout(() => {
+      textareaRef.current?.focus();
+    }, 0);
+  }, []);
 
   const handleAttachmentClick = () => {
+    setIsEmojiPickerOpen(false);
     attachmentInputRef.current?.click();
   };
 
@@ -568,11 +593,20 @@ const MatchConversationModal = ({ match, currentUserId, sending, error, onClose,
             {error && <p className="px-10 pb-3 text-sm text-rose-300">{error}</p>}
 
             <form onSubmit={handleSubmit} className="px-10 pb-8 pt-4">
-              <div className="flex items-center gap-3 rounded-full border border-white/18 bg-[#18063a]/80 px-6 py-3.5 text-white shadow-[0_45px_90px_rgba(10,4,30,0.55)] backdrop-blur-lg">
+              <div className="relative flex items-center gap-3 rounded-full border border-white/18 bg-[#18063a]/80 px-6 py-3.5 text-white shadow-[0_45px_90px_rgba(10,4,30,0.55)] backdrop-blur-lg">
+                {isEmojiPickerOpen ? (
+                  <EmojiPicker
+                    anchorRef={emojiButtonRef}
+                    onSelect={handleEmojiSelect}
+                    onClose={() => setIsEmojiPickerOpen(false)}
+                    variant="dark"
+                  />
+                ) : null}
                 <button
                   type="button"
-                  onClick={handleInsertEmoji}
-                  className="flex h-11 w-11 items-center justify-center rounded-full bg-white/0 text-white/65 transition hover:bg-white/12 hover:text-white"
+                  ref={emojiButtonRef}
+                  onClick={handleToggleEmojiPicker}
+                  className={emojiButtonClasses}
                   aria-label="Add emoji"
                 >
                   <FaceSmileIcon className="h-6 w-6" />
@@ -622,7 +656,10 @@ const MatchConversationModal = ({ match, currentUserId, sending, error, onClose,
                 ) : (
                   <button
                     type="button"
-                    onClick={() => setDraft('Sending a quick voice note...')}
+                    onClick={() => {
+                      setIsEmojiPickerOpen(false);
+                      setDraft('Sending a quick voice note...');
+                    }}
                     className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[#cdb5ff] via-[#a988ff] to-[#7b5bff] text-[#16083f] transition hover:from-[#dcc7ff] hover:via-[#b695ff] hover:to-[#8a6aff]"
                     aria-label="Record voice message"
                   >
