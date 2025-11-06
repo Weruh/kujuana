@@ -125,11 +125,42 @@ export const stats = async (req, res, next) => {
   }
 };
 
+const isValidDataUrl = (value) => typeof value === 'string' && value.startsWith('data:audio');
+
+const estimateBase64Size = (dataUrl) => {
+  if (!isValidDataUrl(dataUrl)) return 0;
+  const [, base64Part = ''] = dataUrl.split(',');
+  if (!base64Part) return 0;
+  return Math.ceil((base64Part.length * 3) / 4);
+};
+
 export const sendMessage = async (req, res, next) => {
   try {
-    const { text } = req.body;
-    if (!text || typeof text !== 'string' || !text.trim()) {
-      return res.status(400).json({ status: 'error', message: 'Message text is required.' });
+    const { text, voiceNote } = req.body;
+
+    const sanitizedText = typeof text === 'string' ? text.trim() : '';
+    const hasVoiceNote =
+      voiceNote &&
+      typeof voiceNote === 'object' &&
+      isValidDataUrl(voiceNote.dataUrl || voiceNote.dataUri || voiceNote.data);
+
+    if (!sanitizedText && !hasVoiceNote) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Either message text or a voice note is required.',
+      });
+    }
+
+    if (hasVoiceNote) {
+      const payload = voiceNote.dataUrl || voiceNote.dataUri || voiceNote.data;
+      const approxBytes = estimateBase64Size(payload);
+      const fiveMb = 5 * 1024 * 1024;
+      if (approxBytes > fiveMb) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Voice notes must be smaller than 5MB.',
+        });
+      }
     }
 
     const db = await getDb();
@@ -145,9 +176,29 @@ export const sendMessage = async (req, res, next) => {
     const message = {
       id: `msg-${Date.now()}`,
       senderId: req.user.id,
-      text: text.trim(),
+      text: sanitizedText,
       createdAt: new Date().toISOString(),
     };
+
+    if (hasVoiceNote) {
+      const payload = voiceNote.dataUrl || voiceNote.dataUri || voiceNote.data;
+      const durationNumber = Number(voiceNote.duration);
+      const voiceNoteEntry = {
+        id: voiceNote.id || `voice-${Date.now()}`,
+        dataUrl: payload,
+        mimeType: typeof voiceNote.mimeType === 'string' ? voiceNote.mimeType : 'audio/webm',
+      };
+      if (Number.isFinite(durationNumber) && durationNumber > 0) {
+        voiceNoteEntry.duration = Math.round(durationNumber);
+      }
+      if (Array.isArray(voiceNote.waveform) && voiceNote.waveform.length) {
+        voiceNoteEntry.waveform = voiceNote.waveform
+          .map((point) => Number(point) || 0)
+          .slice(0, 120);
+      }
+      message.voiceNote = voiceNoteEntry;
+    }
+
     match.conversation.push(message);
     match.updatedAt = new Date().toISOString();
     await persistDb();

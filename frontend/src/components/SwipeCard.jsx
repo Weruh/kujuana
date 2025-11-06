@@ -125,7 +125,7 @@ const SwipeCard = ({ profile, onLike, onPass, onSuperLike, onMessage, onPrevProf
   };
 
   return (
-    <div className="flex w-full max-w-sm flex-col items-center gap-6 sm:max-w-md">
+    <div className="flex w-[78vh] max-w-sm flex-col items-center gap-6 sm:max-w-md ">
       <div
         onClick={handleCardTap}
         onKeyDown={handleCardKeyDown}
