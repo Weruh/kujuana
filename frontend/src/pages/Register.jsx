@@ -271,7 +271,7 @@ const Register = () => {
                     <TextInput
                       name="preferencesAgeMin"
                       type="number"
-                      min={25}
+                      min={20}
                       max={60}
                       value={form.preferencesAgeMin}
                       onChange={handleChange}
@@ -280,7 +280,7 @@ const Register = () => {
                     <TextInput
                       name="preferencesAgeMax"
                       type="number"
-                      min={26}
+                      min={20}
                       max={70}
                       value={form.preferencesAgeMax}
                       onChange={handleChange}

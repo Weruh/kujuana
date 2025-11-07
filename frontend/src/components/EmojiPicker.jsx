@@ -78,7 +78,7 @@ const EmojiPicker = ({ onSelect, onClose, anchorRef, variant = 'light', emojis =
         {emojis.map((group) => (
           <div key={group.label}>
             <p className={classNames.groupLabel}>{group.label}</p>
-            <div className="grid grid-cols-6 gap-1.5">
+            <div className="grid grid-cols-6 gap-0.1 h-full w-full">
               {group.emojis.map((emoji) => (
                 <button
                   key={emoji}

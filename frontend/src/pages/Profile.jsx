@@ -255,7 +255,7 @@ const Profile = () => {
               <div className="flex items-center gap-3">
                 <TextInput
                   type="number"
-                  value={profile.preferences?.ageRange?.[0] || 25}
+                  value={profile.preferences?.ageRange?.[0] || 20}
                   onChange={(event) => {
                     const max = profile.preferences?.ageRange?.[1] || 60;
                     handleNestedChange('preferences', 'ageRange', [Number(event.target.value), max]);

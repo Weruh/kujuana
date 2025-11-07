@@ -100,14 +100,32 @@ const Matches = () => {
           const conversation = match.conversation || [];
           const lastMessage = conversation.length ? conversation[conversation.length - 1] : null;
           const awaitingMember = members.find((member) => member.id === match.awaitingMemberId);
-          const lastMessageText = lastMessage?.text?.trim();
-          const lastMessagePreview = lastMessageText
-            ? lastMessageText
-            : isPending
-            ? match.initiatedBy === user?.id
-              ? `Waiting for ${awaitingMember?.firstName || counterpartName} to respond`
-              : `${counterpartName} liked you. Say hi!`
-            : "Start a thoughtful conversation.";
+          const lastMessageText = typeof lastMessage?.text === 'string' ? lastMessage.text.trim() : '';
+          const attachmentCount = Array.isArray(lastMessage?.attachments)
+            ? lastMessage.attachments.filter(
+                (attachment) =>
+                  attachment &&
+                  typeof attachment === 'object' &&
+                  (attachment.dataUrl || attachment.url || attachment.data || attachment.dataUri),
+              ).length
+            : 0;
+          const hasVoiceNote =
+            lastMessage?.voiceNote && typeof lastMessage.voiceNote === 'object' && lastMessage.voiceNote.dataUrl;
+          let lastMessagePreview;
+          if (lastMessageText) {
+            lastMessagePreview = lastMessageText;
+          } else if (attachmentCount) {
+            lastMessagePreview = attachmentCount === 1 ? 'Shared an image' : `Shared ${attachmentCount} images`;
+          } else if (hasVoiceNote) {
+            lastMessagePreview = 'Sent a voice note';
+          } else if (isPending) {
+            lastMessagePreview =
+              match.initiatedBy === user?.id
+                ? `Waiting for ${awaitingMember?.firstName || counterpartName} to respond`
+                : `${counterpartName} liked you. Say hi!`;
+          } else {
+            lastMessagePreview = 'Start a thoughtful conversation.';
+          }
           const lastActivity = lastMessage?.createdAt || match.updatedAt || match.matchedAt || match.createdAt;
           const dayLabel = formatRelativeDay(lastActivity);
           const rowClasses = `flex w-full items-center gap-4 rounded-3xl border border-transparent px-4 py-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${index === 0 ? "bg-slate-50" : "bg-white"}`;

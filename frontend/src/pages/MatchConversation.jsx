@@ -10,10 +10,21 @@ import {
   NoSymbolIcon,
   VideoCameraSlashIcon,
 } from '@heroicons/react/24/solid';
-import { EllipsisVerticalIcon, FaceSmileIcon, PaperClipIcon, CameraIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { EllipsisVerticalIcon, FaceSmileIcon, PaperClipIcon, CameraIcon, XMarkIcon, UserPlusIcon, PhotoIcon, MapPinIcon, DocumentArrowUpIcon } from '@heroicons/react/24/outline';
 import { CheckIcon } from '@heroicons/react/20/solid';
 import { api, useAuthStore } from '../store/auth.js';
 import EmojiPicker from '../components/EmojiPicker.jsx';
+
+import {
+  buildMapUrl,
+  DOCUMENT_ACCEPT_STRING as DOCUMENT_ACCEPT,
+  formatFileSize,
+  isAllowedDocumentFile,
+  MAX_ATTACHMENTS,
+  MAX_ATTACHMENT_BYTES,
+  normalizeAttachmentsForDisplay,
+  resolveDocumentMimeType,
+} from '../utils/attachments.js';
 
 const formatDayLabel = (isoDate) => {
   const date = new Date(isoDate);
@@ -42,6 +53,11 @@ const formatDuration = (seconds) => {
   return `${mins}:${secs}`;
 };
 
+const formatCoordinate = (value) => {
+  if (!Number.isFinite(value)) return '';
+  return value.toFixed(5);
+};
+
 const chatBackgroundStyle = {
   backgroundColor: '#efeae2',
   backgroundImage:
@@ -57,6 +73,40 @@ const blobToDataUrl = (blob) =>
     reader.readAsDataURL(blob);
   });
 
+const loadImageDimensions = (dataUrl) =>
+  new Promise((resolve) => {
+    if (typeof window === 'undefined' || typeof Image === 'undefined') {
+      resolve({ width: 0, height: 0 });
+      return;
+    }
+    const image = new Image();
+    image.decoding = 'async';
+    image.onload = () => {
+      resolve({
+        width: image.naturalWidth || image.width || 0,
+        height: image.naturalHeight || image.height || 0,
+      });
+      image.onload = null;
+      image.onerror = null;
+    };
+    image.onerror = () => {
+      resolve({ width: 0, height: 0 });
+      image.onload = null;
+      image.onerror = null;
+    };
+    image.src = dataUrl;
+  });
+
+const revokeObjectUrl = (value) => {
+  if (!value) return;
+  if (typeof URL === 'undefined' || typeof URL.revokeObjectURL !== 'function') return;
+  try {
+    URL.revokeObjectURL(value);
+  } catch (err) {
+    console.warn('Failed to revoke object URL', err);
+  }
+};
+
 const MatchConversation = () => {
   const { matchId } = useParams();
   const navigate = useNavigate();
@@ -67,13 +117,19 @@ const MatchConversation = () => {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const [draft, setDraft] = useState('');
+  const [attachments, setAttachments] = useState([]);
 
   const scrollRef = useRef(null);
   const textareaRef = useRef(null);
   const attachmentInputRef = useRef(null);
+  const attachmentsRef = useRef([]);
   const emojiButtonRef = useRef(null);
+  const paperclipButtonRef = useRef(null);
+  const attachmentMenuRef = useRef(null);
+  const documentInputRef = useRef(null);
 
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+  const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
 
   const [pendingVoiceNote, setPendingVoiceNote] = useState(null);
   const [recordingError, setRecordingError] = useState('');
@@ -106,7 +162,7 @@ const MatchConversation = () => {
   const cleanupVoiceNote = useCallback(() => {
     setPendingVoiceNote((prev) => {
       if (prev?.url) {
-        URL.revokeObjectURL(prev.url);
+        revokeObjectUrl(prev.url);
       }
       return null;
     });
@@ -175,6 +231,20 @@ const MatchConversation = () => {
     element.style.height = `${nextHeight}px`;
   }, [draft]);
 
+  useEffect(() => {
+    attachmentsRef.current = attachments;
+  }, [attachments]);
+
+  useEffect(() => {
+    return () => {
+      attachmentsRef.current.forEach((item) => {
+        if (item?.previewUrl) {
+          revokeObjectUrl(item.previewUrl);
+        }
+      });
+    };
+  }, []);
+
   const partner = useMemo(() => {
     if (!match?.members?.length) return null;
     if (!currentUserId) return match.members[0];
@@ -224,6 +294,41 @@ const MatchConversation = () => {
     [cleanupVoiceNote],
   );
 
+  const clearAttachments = useCallback(() => {
+    setAttachments((prev) => {
+      if (!prev.length) {
+        return prev;
+      }
+      prev.forEach((item) => {
+        if (item?.previewUrl) {
+          revokeObjectUrl(item.previewUrl);
+        }
+      });
+      return [];
+    });
+  }, []);
+
+  const handleRemoveAttachment = useCallback((attachmentId) => {
+    if (!attachmentId) return;
+    setAttachments((prev) => {
+      if (!prev.length) {
+        return prev;
+      }
+      const next = [];
+      prev.forEach((item) => {
+        if (item.id === attachmentId) {
+          if (item?.previewUrl) {
+            revokeObjectUrl(item.previewUrl);
+          }
+        } else {
+          next.push(item);
+        }
+      });
+      return next;
+    });
+    setError('');
+  }, [setError]);
+
   const handleStartRecording = async () => {
     if (isRecording) return;
     if (pendingVoiceNote) {
@@ -266,7 +371,7 @@ const MatchConversation = () => {
         const durationSeconds = Math.max(1, Math.round((Date.now() - (recordingStartRef.current || Date.now())) / 1000));
         setPendingVoiceNote((prev) => {
           if (prev?.url) {
-            URL.revokeObjectURL(prev.url);
+            revokeObjectUrl(prev.url);
           }
           return { blob, url, duration: durationSeconds };
         });
@@ -303,7 +408,7 @@ const MatchConversation = () => {
   };
 
   const submitMessage = useCallback(
-    async ({ text, voiceNote } = {}) => {
+    async ({ text, voiceNote, attachments: outgoingAttachments } = {}) => {
       const trimmedText = typeof text === 'string' ? text.trim() : '';
       const payload = {};
       if (trimmedText) {
@@ -312,7 +417,11 @@ const MatchConversation = () => {
       if (voiceNote) {
         payload.voiceNote = voiceNote;
       }
-      if (!payload.text && !payload.voiceNote) {
+      const hasAttachments = Array.isArray(outgoingAttachments) && outgoingAttachments.length > 0;
+      if (hasAttachments) {
+        payload.attachments = outgoingAttachments;
+      }
+      if (!payload.text && !payload.voiceNote && !(payload.attachments && payload.attachments.length)) {
         return;
       }
       if (!matchId) {
@@ -329,6 +438,9 @@ const MatchConversation = () => {
           if (payload.voiceNote) {
             cleanupVoiceNote();
           }
+          if (payload.attachments?.length) {
+            clearAttachments();
+          }
         }
       } catch (err) {
         console.error(err);
@@ -337,29 +449,100 @@ const MatchConversation = () => {
         setSending(false);
       }
     },
-    [cleanupVoiceNote, matchId],
+    [cleanupVoiceNote, clearAttachments, matchId],
   );
 
-  const handleSend = async (event) => {
-    event.preventDefault();
+  const buildOutgoingAttachments = () => {
+    return attachments
+      .map((item, index) => {
+        if (!item) return null;
+        const safeId =
+          item.id || `attachment-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}`;
+        const kind = typeof item.kind === 'string' ? item.kind.toLowerCase() : 'image';
+
+        if (kind === 'location') {
+          const lat = Number(item.lat);
+          const lng = Number(item.lng);
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+            return null;
+          }
+          const payload = {
+            id: safeId,
+            kind: 'location',
+            lat,
+            lng,
+          };
+          if (typeof item.label === 'string' && item.label.trim()) {
+            payload.label = item.label.trim();
+          }
+          if (typeof item.mapUrl === 'string' && item.mapUrl) {
+            payload.mapUrl = item.mapUrl;
+          }
+          if (Number.isFinite(item.accuracy)) {
+            payload.accuracy = Math.round(Number(item.accuracy));
+          }
+          return payload;
+        }
+
+        const dataUrl = item.dataUrl;
+        if (typeof dataUrl !== 'string' || !dataUrl) {
+          return null;
+        }
+
+        const isDocument = kind === 'document';
+
+        const payload = {
+          id: safeId,
+          kind: isDocument ? 'document' : 'image',
+          dataUrl,
+          mimeType:
+            item.mimeType ||
+            (isDocument ? resolveDocumentMimeType(item.name) || 'application/octet-stream' : 'image/*'),
+        };
+
+        if (typeof item.name === 'string' && item.name.trim()) {
+          payload.name = item.name.trim();
+        }
+
+        const parsedSize = Number(item.size);
+        if (Number.isFinite(parsedSize) && parsedSize > 0) {
+          payload.size = Math.round(parsedSize);
+        }
+
+        if (!isDocument) {
+          const parsedWidth = Number(item.width);
+          if (Number.isFinite(parsedWidth) && parsedWidth > 0) {
+            payload.width = Math.round(parsedWidth);
+          }
+          const parsedHeight = Number(item.height);
+          if (Number.isFinite(parsedHeight) && parsedHeight > 0) {
+            payload.height = Math.round(parsedHeight);
+          }
+        }
+
+        return payload;
+      })
+      .filter(Boolean);
+  };
+
+
+  const attemptSend = async () => {
     if (sending) return;
     const text = draft.trim();
-    const hasVoiceNote = Boolean(pendingVoiceNote);
-    if (!text && !hasVoiceNote) {
-      return;
-    }
-    if (hasVoiceNote && pendingVoiceNote.blob.size > 5 * 1024 * 1024) {
-      setError('Voice notes must be smaller than 5MB.');
+    const attachmentPayload = buildOutgoingAttachments();
+    const hasAttachments = attachmentPayload.length > 0;
+    if (!text && !hasAttachments && !pendingVoiceNote) {
       return;
     }
 
     let voiceNotePayload;
-    if (hasVoiceNote) {
+    if (pendingVoiceNote?.blob) {
       try {
         const dataUrl = await blobToDataUrl(pendingVoiceNote.blob);
         voiceNotePayload = {
+          id: pendingVoiceNote.id || `voice-${Date.now()}`,
           dataUrl,
-          mimeType: pendingVoiceNote.blob.type,
+          mimeType: pendingVoiceNote.blob.type || 'audio/webm',
           duration: pendingVoiceNote.duration,
         };
       } catch (err) {
@@ -369,24 +552,31 @@ const MatchConversation = () => {
       }
     }
 
-    await submitMessage({ text, voiceNote: voiceNotePayload });
+    setError('');
+    setIsEmojiPickerOpen(false);
+    await submitMessage({ text, voiceNote: voiceNotePayload, attachments: attachmentPayload });
   };
 
   const handleComposerKeyDown = async (event) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
-      if (sending) return;
-      const text = draft.trim();
-      if (!text) {
-        return;
-      }
-      await submitMessage({ text });
+      await attemptSend();
     }
   };
 
-  const handleToggleEmojiPicker = useCallback(() => {
-    setIsEmojiPickerOpen((prev) => !prev);
+  const handleSend = async (event) => {
+    event.preventDefault();
+    await attemptSend();
+  };
+
+  const closeAttachmentMenu = useCallback(() => {
+    setIsAttachmentMenuOpen(false);
   }, []);
+
+  const handleToggleEmojiPicker = useCallback(() => {
+    closeAttachmentMenu();
+    setIsEmojiPickerOpen((prev) => !prev);
+  }, [closeAttachmentMenu]);
 
   const handleEmojiSelect = useCallback((emoji) => {
     if (!emoji) return;
@@ -400,18 +590,244 @@ const MatchConversation = () => {
     }, 0);
   }, []);
 
+  const openImagePicker = useCallback(() => {
+    if (attachments.length >= MAX_ATTACHMENTS) {
+      setError(`You can share up to ${MAX_ATTACHMENTS} attachments per message.`);
+      return;
+    }
+    setIsEmojiPickerOpen(false);
+    setError('');
+    const input = attachmentInputRef.current;
+    if (!input) return;
+    input.value = '';
+    input.click();
+  }, [attachments.length, setError]);
+
   const handleAttachmentClick = () => {
     setIsEmojiPickerOpen(false);
-    attachmentInputRef.current?.click();
+    setIsAttachmentMenuOpen((prev) => !prev);
   };
 
-  const handleAttachmentChange = (event) => {
+  useEffect(() => {
+    if (!isAttachmentMenuOpen || typeof document === 'undefined') return;
+    const handleClick = (event) => {
+      const menuEl = attachmentMenuRef.current;
+      const buttonEl = paperclipButtonRef.current;
+      if (!menuEl || menuEl.contains(event.target) || buttonEl?.contains?.(event.target)) {
+        return;
+      }
+      closeAttachmentMenu();
+    };
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        closeAttachmentMenu();
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [closeAttachmentMenu, isAttachmentMenuOpen]);
+
+  const appendDraftSnippet = useCallback(
+    (snippet) => {
+      setDraft((prev) => (prev ? `${prev}\n${snippet}` : snippet));
+      closeAttachmentMenu();
+      setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 0);
+    },
+    [closeAttachmentMenu]
+  );
+
+  const handleShareContact = useCallback(() => {
+    closeAttachmentMenu();
+    if (typeof window === 'undefined') {
+      appendDraftSnippet('[Shared contact card]');
+      return;
+    }
+    const details = window.prompt('Enter the contact details to share:');
+    if (details === null) return;
+    const trimmed = details.trim();
+    appendDraftSnippet(trimmed ? `[Shared contact] ${trimmed}` : '[Shared contact card]');
+  }, [appendDraftSnippet, closeAttachmentMenu]);
+
+  const handleShareImages = useCallback(() => {
+    closeAttachmentMenu();
+    openImagePicker();
+  }, [closeAttachmentMenu, openImagePicker]);
+
+  const handleShareLocation = useCallback(() => {
+    closeAttachmentMenu();
+    if (attachments.length >= MAX_ATTACHMENTS) {
+      setError(`You can share up to ${MAX_ATTACHMENTS} attachments per message.`);
+      return;
+    }
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setError('Location sharing is not supported on this device.');
+      return;
+    }
+    setError('');
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        const lat = coords?.latitude;
+        const lng = coords?.longitude;
+        const accuracy = coords?.accuracy;
+        if (typeof lat !== 'number' || typeof lng !== 'number') {
+          setError('We could not read your coordinates. Try again.');
+          return;
+        }
+        const attachmentId = `location-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        const locationAttachment = {
+          id: attachmentId,
+          kind: 'location',
+          lat,
+          lng,
+          label: 'Shared location',
+          mapUrl: buildMapUrl(lat, lng),
+        };
+        if (typeof accuracy === 'number') {
+          locationAttachment.accuracy = accuracy;
+        }
+        setAttachments((prev) => {
+          if (prev.length >= MAX_ATTACHMENTS) {
+            setError(`You can share up to ${MAX_ATTACHMENTS} attachments per message.`);
+            return prev;
+          }
+          return [...prev, locationAttachment];
+        });
+        setTimeout(() => {
+          textareaRef.current?.focus();
+        }, 0);
+      },
+      () => {
+        setError('We could not access your location. Check your browser permissions.');
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }, [attachments.length, closeAttachmentMenu, setError]);
+
+  const handleShareDocuments = useCallback(() => {
+    closeAttachmentMenu();
+    if (attachments.length >= MAX_ATTACHMENTS) {
+      setError(`You can share up to ${MAX_ATTACHMENTS} attachments per message.`);
+      return;
+    }
+    const input = documentInputRef.current;
+    if (!input) return;
+    input.value = '';
+    input.click();
+  }, [attachments.length, closeAttachmentMenu, setError]);
+
+  const handleCameraClick = useCallback(() => {
+    closeAttachmentMenu();
+    openImagePicker();
+  }, [closeAttachmentMenu, openImagePicker]);
+
+  const handleAttachmentChange = async (event) => {
     const files = Array.from(event.target.files || []);
-    if (!files.length) return;
-    const names = files.map((file) => file.name).join(', ');
-    setDraft((prev) => `${prev}${prev ? '\n' : ''}[Attachment: ${names}]`);
     event.target.value = '';
-    textareaRef.current?.focus();
+    if (!files.length) return;
+
+    const imageFiles = files.filter((file) => file && typeof file.type === 'string' && file.type.startsWith('image/'));
+    if (!imageFiles.length) {
+      setError('Only image attachments are supported right now.');
+      return;
+    }
+
+    const availableSlots = MAX_ATTACHMENTS - attachments.length;
+    if (availableSlots <= 0) {
+      setError(`You can share up to ${MAX_ATTACHMENTS} attachments per message.`);
+      return;
+    }
+
+    const selection = imageFiles.slice(0, availableSlots);
+    const oversize = selection.find((file) => file.size > MAX_ATTACHMENT_BYTES);
+    if (oversize) {
+      setError('Images must be 5MB or smaller.');
+      return;
+    }
+
+    try {
+      const prepared = await Promise.all(
+        selection.map(async (file, index) => {
+          const dataUrl = await blobToDataUrl(file);
+          const { width, height } = await loadImageDimensions(dataUrl);
+          const previewUrl =
+            typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function' ? URL.createObjectURL(file) : null;
+          return {
+            id: `attachment-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}`,
+            kind: 'image',
+            name: file.name,
+            size: file.size,
+            mimeType: file.type || 'image/*',
+            dataUrl,
+            width,
+            height,
+            previewUrl,
+          };
+        }),
+      );
+      setAttachments((prev) => [...prev, ...prepared]);
+      setError('');
+      setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 0);
+    } catch (err) {
+      console.error(err);
+      setError('We could not process one of your images. Please try again.');
+    }
+  };
+
+  const handleDocumentChange = async (event) => {
+    const files = Array.from(event.target.files || []);
+    event.target.value = '';
+    if (!files.length) return;
+
+    const availableSlots = MAX_ATTACHMENTS - attachments.length;
+    if (availableSlots <= 0) {
+      setError(`You can share up to ${MAX_ATTACHMENTS} attachments per message.`);
+      return;
+    }
+
+    const allowed = files.filter((file) => isAllowedDocumentFile(file));
+    if (!allowed.length) {
+      setError('That file type is not supported. Try PDF, Word, Excel, PowerPoint, TXT, or RTF files.');
+      return;
+    }
+
+    const selection = allowed.slice(0, availableSlots);
+    const oversized = selection.find((file) => file.size > MAX_ATTACHMENT_BYTES);
+    if (oversized) {
+      setError('Documents must be 5MB or smaller.');
+      return;
+    }
+
+    try {
+      const prepared = await Promise.all(
+        selection.map(async (file, index) => {
+          const dataUrl = await blobToDataUrl(file);
+          return {
+            id: `document-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}`,
+            kind: 'document',
+            name: file.name,
+            size: file.size,
+            mimeType: resolveDocumentMimeType(file) || 'application/octet-stream',
+            dataUrl,
+          };
+        }),
+      );
+      setAttachments((prev) => [...prev, ...prepared]);
+      setError('');
+      setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 0);
+    } catch (err) {
+      console.error(err);
+      setError('We could not process one of your documents. Please try again.');
+    }
   };
 
   const handleBack = () => {
@@ -585,10 +1001,11 @@ const MatchConversation = () => {
   };
 
   const hasDraft = draft.trim().length > 0;
-  const canSend = hasDraft || Boolean(pendingVoiceNote);
+  const hasAttachments = attachments.length > 0;
+  const canSend = hasDraft || hasAttachments || Boolean(pendingVoiceNote);
   const emojiButtonClasses = [
-    "flex h-10 w-10 items-center justify-center transition hover:text-[#075E54]",
-    isEmojiPickerOpen ? "text-[#075E54]" : "text-[#54656f]",
+    "flex h-11 w-10 items-center justify-center transition hover:text-[#5e4891]",
+    isEmojiPickerOpen ? "text-[#5e4891]" : "text-[#5e4891]",
   ].join(" ");
 
   const voiceMuteButtonClasses = [
@@ -692,16 +1109,107 @@ const MatchConversation = () => {
               }
               const message = item.payload;
               const isMine = message.senderId === currentUserId;
-              const voiceNote = message.voiceNote && typeof message.voiceNote === 'object' ? message.voiceNote : null;
+              const voiceNote =
+                message.voiceNote && typeof message.voiceNote === 'object' ? message.voiceNote : null;
+              const messageAttachments = normalizeAttachmentsForDisplay(message.attachments, item.id);
+              const imageAttachments = messageAttachments.filter((attachment) => attachment.kind === 'image');
+              const otherAttachments = messageAttachments.filter((attachment) => attachment.kind !== 'image');
+              const textContent = typeof message.text === 'string' ? message.text : '';
+              const hasText = textContent.trim().length > 0;
               return (
                 <div key={item.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
                   <div
                     className={`relative max-w-[82%] rounded-2xl border px-3 py-2 text-[15px] leading-snug shadow-sm ${
                       isMine
-                        ? 'rounded-br-md border-[#b7ddb0] bg-[#dcf8c6] text-[#1f2c34]'
+                        ? 'rounded-br-md border-[#b7dd] bg-[#9d83d9] text-[#1f2528]'
                         : 'rounded-bl-md border-[#dfe1dc] bg-white text-[#1f2c34]'
                     }`}
                   >
+                    {imageAttachments.length ? (
+                      <div
+                        className={`grid gap-2 ${
+                          imageAttachments.length > 1 ? 'grid-cols-2' : 'grid-cols-1'
+                        } ${voiceNote || hasText || otherAttachments.length ? 'mb-2' : ''}`}
+                      >
+                        {imageAttachments.map((attachment, attachmentIndex) => {
+                          const src =
+                            attachment?.dataUrl || attachment?.dataUri || attachment?.url || attachment?.data;
+                          if (!src) {
+                            return null;
+                          }
+                          const key =
+                            attachment?.id || attachment?.name || `${item.id}-attachment-${attachmentIndex}`;
+                          return (
+                            <img
+                              key={key}
+                              src={src}
+                              alt={attachment?.name || 'Shared image'}
+                              className="max-h-48 min-h-[96px] w-full rounded-xl object-cover"
+                            />
+                          );
+                        })}
+                      </div>
+                    ) : null}
+                    {otherAttachments.map((attachment, otherIndex) => {
+                      if (attachment.kind === 'document') {
+                        const meta = [formatFileSize(attachment.size), attachment.mimeType]
+                          .filter(Boolean)
+                          .join(' ? ');
+                        return (
+                          <div
+                            key={attachment.id || `${item.id}-document-${otherIndex}`}
+                            className="mb-2 rounded-xl border border-[#dfe1dc] bg-white/95 p-3 text-sm text-[#1f2c34] shadow-sm"
+                          >
+                            <div className="flex items-center gap-3">
+                              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f0f2f5] text-[#5e4891]">
+                                <DocumentArrowUpIcon className="h-5 w-5" />
+                              </span>
+                              <div className="flex-1">
+                                <p className="truncate text-[15px] font-semibold">{attachment.name || 'Document'}</p>
+                                {meta ? <p className="text-xs text-[#6a7175]">{meta}</p> : null}
+                              </div>
+                              <a
+                                href={attachment.dataUrl}
+                                download={attachment.name || 'document'}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-sm font-semibold text-[#5e4891] hover:underline"
+                              >
+                                Download
+                              </a>
+                            </div>
+                          </div>
+                        );
+                      }
+                      if (attachment.kind === 'location') {
+                        return (
+                          <div
+                            key={attachment.id || `${item.id}-location-${otherIndex}`}
+                            className="mb-2 rounded-xl border border-[#dfe1dc] bg-white/95 p-3 text-sm text-[#1f2c34] shadow-sm"
+                          >
+                            <div className="mb-1 flex items-center gap-2 text-[#5e4891]">
+                              <MapPinIcon className="h-5 w-5" />
+                              <span className="font-semibold">{attachment.label || 'Shared location'}</span>
+                            </div>
+                            <p className="text-xs text-[#6a7175]">
+                              {formatCoordinate(attachment.lat)}, {formatCoordinate(attachment.lng)}
+                              {typeof attachment.accuracy === 'number' ? ` ? ?${Math.round(attachment.accuracy)}m` : ''}
+                            </p>
+                            {attachment.mapUrl ? (
+                              <a
+                                href={attachment.mapUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="mt-2 inline-flex text-xs font-semibold text-[#5e4891] hover:underline"
+                              >
+                                Open in Maps
+                              </a>
+                            ) : null}
+                          </div>
+                        );
+                      }
+                      return null;
+                    })}
                     {voiceNote ? (
                       <div className="flex flex-col gap-2">
                         <div className="flex items-center gap-3">
@@ -710,11 +1218,12 @@ const MatchConversation = () => {
                             <span className="text-xs text-[#6a7175]">{formatDuration(voiceNote.duration)}</span>
                           ) : null}
                         </div>
-                        {message.text ? <p className="whitespace-pre-wrap">{message.text}</p> : null}
+                        {hasText ? <p className="whitespace-pre-wrap">{textContent}</p> : null}
                       </div>
-                    ) : (
-                      <p className="whitespace-pre-wrap">{message.text}</p>
-                    )}
+                    ) : null}
+                    {!voiceNote && hasText ? (
+                      <p className="whitespace-pre-wrap">{textContent}</p>
+                    ) : null}
                     <div className="mt-1 flex items-center justify-end gap-1 text-[11px] text-[#6a7175]">
                       <span>{formatTime(message.createdAt)}</span>
                       {isMine && (
@@ -727,7 +1236,7 @@ const MatchConversation = () => {
                     <span
                       className={`absolute bottom-0 ${isMine ? 'right-[-6px]' : 'left-[-6px]'} h-3 w-3 rotate-45 ${
                         isMine
-                          ? 'border-b border-r border-[#b7ddb0] bg-[#dcf8c6]'
+                          ? 'border-b border-r border-[##5e4891] bg-[#dcf]'
                           : 'border-b border-l border-[#dfe1dc] bg-white'
                       }`}
                       aria-hidden="true"
@@ -768,9 +1277,96 @@ const MatchConversation = () => {
         </div>
       ) : null}
 
+      {attachments.length ? (
+        <div className="px-6">
+          <div className="mb-2 flex flex-wrap gap-3">
+            {attachments.map((item) => {
+              if (!item) return null;
+              if (item.kind === 'document') {
+                const sizeLabel = formatFileSize(item.size) || 'Ready to send';
+                return (
+                  <div
+                    key={item.id}
+                    className="relative w-56 rounded-2xl border border-[#d1d7db] bg-white px-3 py-2 text-sm text-[#1f2c34] shadow"
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#f0f2f5] text-[#5e4891]">
+                        <DocumentArrowUpIcon className="h-5 w-5" />
+                      </span>
+                      <div className="flex-1">
+                        <p className="truncate font-semibold">{item.name || 'Document'}</p>
+                        <p className="text-xs text-[#6a7175]">{sizeLabel}</p>
+                      </div>
+                    </div>
+                    <p className="mt-2 text-xs text-[#6a7175]">{item.mimeType || 'application/octet-stream'}</p>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveAttachment(item.id)}
+                      className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/50 text-white transition hover:bg-black/80"
+                      aria-label="Remove attachment"
+                    >
+                      <XMarkIcon className="h-4 w-4" />
+                    </button>
+                  </div>
+                );
+              }
+              if (item.kind === 'location') {
+                return (
+                  <div
+                    key={item.id}
+                    className="relative w-56 rounded-2xl border border-[#d1d7db] bg-white px-3 py-2 text-sm text-[#1f2c34] shadow"
+                  >
+                    <div className="mb-1 flex items-center gap-2 text-[#5e4891]">
+                      <MapPinIcon className="h-5 w-5" />
+                      <span className="font-semibold">{item.label || 'Shared location'}</span>
+                    </div>
+                    <p className="text-xs text-[#6a7175]">
+                      {formatCoordinate(item.lat)}, {formatCoordinate(item.lng)}
+                    </p>
+                    {item.mapUrl ? (
+                      <a
+                        href={item.mapUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-1 inline-flex text-xs font-semibold text-[#5e4891] hover:underline"
+                      >
+                        View map
+                      </a>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveAttachment(item.id)}
+                      className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/50 text-white transition hover:bg-black/80"
+                      aria-label="Remove attachment"
+                    >
+                      <XMarkIcon className="h-4 w-4" />
+                    </button>
+                  </div>
+                );
+              }
+              const previewSrc = item.previewUrl || item.dataUrl;
+              if (!previewSrc) return null;
+              return (
+                <div key={item.id} className="relative h-24 w-24 overflow-hidden rounded-2xl bg-[#f0f2f5] shadow">
+                  <img src={previewSrc} alt={item.name || 'Shared image'} className="h-full w-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveAttachment(item.id)}
+                    className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white transition hover:bg-black/80"
+                    aria-label="Remove attachment"
+                  >
+                    <XMarkIcon className="h-4 w-4" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
       {pendingVoiceNote ? (
         <div className="px-6">
-          <div className="mb-2 flex items-center gap-3 rounded-2xl bg-white px-3 py-2 text-sm text-[#1f2c34] shadow">
+          <div className="mb-2 flex items-center gap-3 rounded-2xl bg-white px-3 py-2 text-sm text-[#5e4891] shadow">
             <audio controls src={pendingVoiceNote.url} className="max-w-[220px]" preload="metadata" />
             <span className="text-xs text-[#6a7175]">{formatDuration(pendingVoiceNote.duration)}</span>
             <button
@@ -802,14 +1398,57 @@ const MatchConversation = () => {
           >
             <FaceSmileIcon className="h-6 w-6" />
           </button>
-          <button
-            type="button"
-            onClick={handleAttachmentClick}
-            className="flex h-10 w-10 items-center justify-center text-[#54656f] transition hover:text-[#075E54]"
-            aria-label="Add attachment"
-          >
-            <PaperClipIcon className="h-6 w-6 rotate-45" />
-          </button>
+          <div className="relative flex items-center">
+            <button
+              type="button"
+              ref={paperclipButtonRef}
+              onClick={handleAttachmentClick}
+              className="flex h-10 w-10 items-center justify-center text-[#5e4891] transition hover:text-[#40247f]"
+              aria-label="Add attachment"
+            >
+              <PaperClipIcon className="h-6 w-6 rotate-45" />
+            </button>
+            {isAttachmentMenuOpen ? (
+              <div
+                ref={attachmentMenuRef}
+                className="absolute bottom-full left-1/2 mb-2 w-52 -translate-x-1/2 rounded-2xl border border-[#d1d7db] bg-white p-2 text-sm shadow-xl"
+              >
+                <p className="px-3 pb-2 pt-1 text-xs font-semibold uppercase tracking-wide text-[#6a7175]">Share</p>
+                <button
+                  type="button"
+                  onClick={handleShareContact}
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-[#1f2c34] transition hover:bg-[#f0f2f5]"
+                >
+                  <UserPlusIcon className="h-5 w-5 text-[#5e4891]" />
+                  Share contact
+                </button>
+                <button
+                  type="button"
+                  onClick={handleShareImages}
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-[#1f2c34] transition hover:bg-[#f0f2f5]"
+                >
+                  <PhotoIcon className="h-5 w-5 text-[#5e4891]" />
+                  Share images
+                </button>
+                <button
+                  type="button"
+                  onClick={handleShareLocation}
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-[#1f2c34] transition hover:bg-[#f0f2f5]"
+                >
+                  <MapPinIcon className="h-5 w-5 text-[#5e4891]" />
+                  Share location
+                </button>
+                <button
+                  type="button"
+                  onClick={handleShareDocuments}
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-[#1f2c34] transition hover:bg-[#f0f2f5]"
+                >
+                  <DocumentArrowUpIcon className="h-5 w-5 text-[#5e4891]" />
+                  Share documents
+                </button>
+              </div>
+            ) : null}
+          </div>
           <textarea
             ref={textareaRef}
             value={draft}
@@ -817,12 +1456,12 @@ const MatchConversation = () => {
             onKeyDown={handleComposerKeyDown}
             placeholder="Type a message"
             rows={1}
-            className="max-h-40 flex-1 resize-none border-0 bg-transparent text-[15px] text-[#1f2c34] outline-none focus:ring-0"
+            className="max-h-40 mb-2 flex-1 resize-none border-0 bg-transparent text-[15px] text-[#1f2c34] outline-none focus:ring-0"
           />
           <button
             type="button"
-            onClick={handleAttachmentClick}
-            className="flex h-10 w-10 items-center justify-center text-[#54656f] transition hover:text-[#075E54]"
+            onClick={handleCameraClick}
+            className="flex h-10 w-10 items-center justify-center text-[#5e4891] transition hover:text-[#40247f]"
             aria-label="Open camera"
           >
             <CameraIcon className="h-6 w-6" />
@@ -830,10 +1469,18 @@ const MatchConversation = () => {
           <input
             ref={attachmentInputRef}
             type="file"
-            accept="image/*,video/*"
+            accept="image/*"
             multiple
             className="hidden"
             onChange={handleAttachmentChange}
+          />
+          <input
+            ref={documentInputRef}
+            type="file"
+            accept={DOCUMENT_ACCEPT}
+            multiple
+            className="hidden"
+            onChange={handleDocumentChange}
           />
           {canSend ? (
             <button
@@ -857,7 +1504,7 @@ const MatchConversation = () => {
             <button
               type="button"
               onClick={handleStartRecording}
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-[#00A884] text-white transition hover:bg-[#02926f]"
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-[#40247f] text-white transition hover:bg-[#503889]"
               aria-label="Record voice note"
             >
               <MicrophoneIcon className="h-5 w-5" />

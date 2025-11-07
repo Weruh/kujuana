@@ -125,7 +125,7 @@ const Upgrade = () => {
           >
             {loading ? 'Redirecting...' : 'Upgrade now'}
           </button>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-500 mt-4">
             {token ? 'Stay accountable to your intentions.' : 'You need an account to upgrade.'}
           </p>
         </div>

@@ -8,8 +8,18 @@ import {
   SpeakerWaveIcon,
 } from '@heroicons/react/24/solid';
 import { CheckIcon } from '@heroicons/react/20/solid';
-import { FaceSmileIcon, PaperClipIcon, CameraIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import {
+  FaceSmileIcon,
+  PaperClipIcon,
+  CameraIcon,
+  MagnifyingGlassIcon,
+  UserPlusIcon,
+  PhotoIcon,
+  MapPinIcon,
+  DocumentArrowUpIcon,
+} from '@heroicons/react/24/outline';
 import EmojiPicker from './EmojiPicker.jsx';
+import { DOCUMENT_ACCEPT_STRING as DOCUMENT_ACCEPT, formatFileSize, normalizeAttachmentsForDisplay } from '../utils/attachments.js';
 
 const FALLBACK_ROSTER = [
   { name: 'Keith', subtitle: 'Online', metric: '227.68' },
@@ -42,6 +52,11 @@ const formatTime = (isoDate) => {
   const date = new Date(isoDate);
   if (Number.isNaN(date.getTime())) return '';
   return date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+};
+
+const formatCoordinate = (value) => {
+  if (!Number.isFinite(value)) return '';
+  return value.toFixed(5);
 };
 
 const chatBackgroundStyle = {
@@ -127,9 +142,13 @@ const MatchConversationModal = ({ match, currentUserId, sending, error, onClose,
   const containerRef = useRef(null);
   const textareaRef = useRef(null);
   const attachmentInputRef = useRef(null);
+  const documentInputRef = useRef(null);
   const emojiButtonRef = useRef(null);
+  const paperclipButtonRef = useRef(null);
+  const attachmentMenuRef = useRef(null);
 
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+  const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
 
 
   useEffect(() => {
@@ -326,9 +345,102 @@ const MatchConversationModal = ({ match, currentUserId, sending, error, onClose,
     }, 0);
   }, []);
 
+  const closeAttachmentMenu = useCallback(() => {
+    setIsAttachmentMenuOpen(false);
+  }, []);
+
   const handleAttachmentClick = () => {
     setIsEmojiPickerOpen(false);
-    attachmentInputRef.current?.click();
+    setIsAttachmentMenuOpen((prev) => !prev);
+  };
+
+  useEffect(() => {
+    if (!isAttachmentMenuOpen || typeof document === 'undefined') return;
+    const handleClick = (event) => {
+      const menuEl = attachmentMenuRef.current;
+      const buttonEl = paperclipButtonRef.current;
+      if (!menuEl || menuEl.contains(event.target) || buttonEl?.contains?.(event.target)) {
+        return;
+      }
+      closeAttachmentMenu();
+    };
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        closeAttachmentMenu();
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [closeAttachmentMenu, isAttachmentMenuOpen]);
+
+  const appendDraftSnippet = useCallback((snippet) => {
+    setDraft((prev) => (prev ? `${prev}\n${snippet}` : snippet));
+    closeAttachmentMenu();
+    setTimeout(() => {
+      textareaRef.current?.focus();
+    }, 0);
+  }, [closeAttachmentMenu]);
+
+  const handleShareContact = useCallback(() => {
+    closeAttachmentMenu();
+    if (typeof window === 'undefined') {
+      appendDraftSnippet('[Shared contact card]');
+      return;
+    }
+    const details = window.prompt('Enter the contact details to share:');
+    if (details === null) return;
+    const trimmed = details.trim();
+    appendDraftSnippet(trimmed ? `[Shared contact] ${trimmed}` : '[Shared contact card]');
+  }, [appendDraftSnippet, closeAttachmentMenu]);
+
+  const handleShareImages = useCallback(() => {
+    closeAttachmentMenu();
+    const input = attachmentInputRef.current;
+    if (!input) return;
+    input.value = '';
+    input.click();
+  }, [closeAttachmentMenu]);
+
+  const handleShareDocuments = useCallback(() => {
+    closeAttachmentMenu();
+    const input = documentInputRef.current;
+    if (!input) return;
+    input.value = '';
+    input.click();
+  }, [closeAttachmentMenu]);
+
+  const handleShareLocation = useCallback(() => {
+    closeAttachmentMenu();
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      appendDraftSnippet('[Location sharing unavailable]');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        const lat = coords?.latitude;
+        const lng = coords?.longitude;
+        if (typeof lat === 'number' && typeof lng === 'number') {
+          appendDraftSnippet(`[Location: ${lat.toFixed(5)}, ${lng.toFixed(5)}]`);
+        } else {
+          appendDraftSnippet('[Shared location]');
+        }
+      },
+      () => {
+        appendDraftSnippet('[Location sharing failed]');
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }, [appendDraftSnippet, closeAttachmentMenu]);
+
+  const handleCameraClick = () => {
+    const input = attachmentInputRef.current;
+    if (!input) return;
+    input.value = '';
+    input.click();
   };
 
   const handleAttachmentChange = (event) => {
@@ -344,6 +456,14 @@ const MatchConversationModal = ({ match, currentUserId, sending, error, onClose,
   const handleClose = () => {
     onClose();
     setDraft('');
+  };
+
+  const handleDocumentChange = (event) => {
+    const files = Array.from(event.target.files || []);
+    if (!files.length) return;
+    const names = files.map((file) => file.name).join(', ');
+    appendDraftSnippet(`[Document attachment: ${names}]`);
+    event.target.value = '';
   };
 
   return (
@@ -454,6 +574,11 @@ const MatchConversationModal = ({ match, currentUserId, sending, error, onClose,
                     const variant = message.type || message.variant || 'message';
                     const isSpacer = variant === 'spacer';
                     const voiceNote = message.voiceNote || null;
+                    const messageAttachments = normalizeAttachmentsForDisplay(message.attachments, item.id);
+                    const imageAttachments = messageAttachments.filter((attachment) => attachment.kind === 'image');
+                    const otherAttachments = messageAttachments.filter((attachment) => attachment.kind !== 'image');
+                    const textContent = typeof message.text === 'string' ? message.text : '';
+                    const hasText = textContent.trim().length > 0;
                     const bubbleBaseClasses =
                       'relative max-w-[76%] rounded-[26px] border text-[15px] leading-relaxed shadow-[0_22px_50px_rgba(10,4,28,0.45)] transition-all';
                     const bubblePadding = isSpacer ? 'px-8 py-3' : 'px-6 py-4';
@@ -509,6 +634,99 @@ const MatchConversationModal = ({ match, currentUserId, sending, error, onClose,
                               {sideMetric}
                             </span>
                           ) : null}
+                          {!isSpacer && (imageAttachments.length || otherAttachments.length) ? (
+                            <>
+                              {imageAttachments.length ? (
+                                <div
+                                  className={cx(
+                                    'grid gap-3',
+                                    imageAttachments.length > 1 ? 'grid-cols-2' : 'grid-cols-1',
+                                    voiceNote || hasText || otherAttachments.length ? 'mb-4' : ''
+                                  )}
+                                >
+                                  {imageAttachments.map((attachment, attachmentIndex) => {
+                                    const src =
+                                      attachment?.dataUrl || attachment?.dataUri || attachment?.url || attachment?.data;
+                                    if (!src) {
+                                      return null;
+                                    }
+                                    const key =
+                                      attachment?.id ||
+                                      attachment?.name ||
+                                      `${item.id}-modal-attachment-${attachmentIndex}`;
+                                    return (
+                                      <img
+                                        key={key}
+                                        src={src}
+                                        alt={attachment?.name || 'Shared image'}
+                                        className="h-32 w-full rounded-3xl object-cover"
+                                      />
+                                    );
+                                  })}
+                                </div>
+                              ) : null}
+                              {otherAttachments.map((attachment, otherIndex) => {
+                                if (attachment.kind === 'document') {
+                                  const meta = [formatFileSize(attachment.size), attachment.mimeType]
+                                    .filter(Boolean)
+                                    .join(' ? ');
+                                  return (
+                                    <div
+                                      key={attachment.id || `${item.id}-modal-document-${otherIndex}`}
+                                      className="mb-4 rounded-3xl border border-white/15 bg-white/10 p-4 text-sm text-white/90 backdrop-blur"
+                                    >
+                                      <div className="flex items-start gap-3">
+                                        <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/15 text-white">
+                                          <DocumentArrowUpIcon className="h-5 w-5" />
+                                        </span>
+                                        <div className="flex-1">
+                                          <p className="truncate font-semibold">{attachment.name || 'Document'}</p>
+                                          {meta ? <p className="text-xs text-white/70">{meta}</p> : null}
+                                        </div>
+                                        <a
+                                          href={attachment.dataUrl}
+                                          download={attachment.name || 'document'}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="text-xs font-semibold text-white/90 hover:underline"
+                                        >
+                                          Download
+                                        </a>
+                                      </div>
+                                    </div>
+                                  );
+                                }
+                                if (attachment.kind === 'location') {
+                                  return (
+                                    <div
+                                      key={attachment.id || `${item.id}-modal-location-${otherIndex}`}
+                                      className="mb-4 rounded-3xl border border-white/15 bg-white/10 p-4 text-sm text-white/85 backdrop-blur"
+                                    >
+                                      <div className="mb-1 flex items-center gap-2 text-white">
+                                        <MapPinIcon className="h-5 w-5" />
+                                        <span className="font-semibold">{attachment.label || 'Shared location'}</span>
+                                      </div>
+                                      <p className="text-xs text-white/70">
+                                        {formatCoordinate(attachment.lat)}, {formatCoordinate(attachment.lng)}
+                                        {typeof attachment.accuracy === 'number' ? ` ? ?${Math.round(attachment.accuracy)}m` : ''}
+                                      </p>
+                                      {attachment.mapUrl ? (
+                                        <a
+                                          href={attachment.mapUrl}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="mt-2 inline-flex text-xs font-semibold text-white hover:underline"
+                                        >
+                                          Open in Maps
+                                        </a>
+                                      ) : null}
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              })}
+                            </>
+                          ) : null}
                           {voiceNote ? (
                             <div className="flex flex-col gap-3">
                               <div className="flex items-center gap-4">
@@ -551,15 +769,15 @@ const MatchConversationModal = ({ match, currentUserId, sending, error, onClose,
                                   ) : null}
                                 </div>
                               </div>
-                              {message.text ? (
+                              {hasText ? (
                                 <p className={cx('whitespace-pre-wrap text-sm', isMine ? 'text-[#291658]' : 'text-white/80')}>
-                                  {message.text}
+                                  {textContent}
                                 </p>
                               ) : null}
                             </div>
-                          ) : isSpacer ? null : (
-                            <p className="whitespace-pre-wrap">{message.text}</p>
-                          )}
+                          ) : isSpacer ? null : hasText ? (
+                            <p className="whitespace-pre-wrap text-sm">{textContent}</p>
+                          ) : null}
                           {showMeta ? (
                             <div className={cx('mt-3 flex items-center gap-1 text-[11px]', metaClass)}>
                               {timestamp ? <span>{timestamp}</span> : null}
@@ -611,14 +829,57 @@ const MatchConversationModal = ({ match, currentUserId, sending, error, onClose,
                 >
                   <FaceSmileIcon className="h-6 w-6" />
                 </button>
-                <button
-                  type="button"
-                  onClick={handleAttachmentClick}
-                  className="flex h-11 w-11 items-center justify-center rounded-full bg-white/0 text-white/65 transition hover:bg-white/12 hover:text-white"
-                  aria-label="Add attachment"
-                >
-                  <PaperClipIcon className="h-6 w-6 rotate-45" />
-                </button>
+                <div className="relative flex items-center">
+                  <button
+                    type="button"
+                    ref={paperclipButtonRef}
+                    onClick={handleAttachmentClick}
+                    className="flex h-11 w-11 items-center justify-center rounded-full bg-white/0 text-white/65 transition hover:bg-white/12 hover:text-white"
+                    aria-label="Add attachment"
+                  >
+                    <PaperClipIcon className="h-6 w-6 rotate-45" />
+                  </button>
+                  {isAttachmentMenuOpen ? (
+                    <div
+                      ref={attachmentMenuRef}
+                      className="absolute bottom-full left-1/2 mb-3 w-56 -translate-x-1/2 rounded-2xl border border-white/10 bg-[#1d083f]/95 p-2 text-sm shadow-xl backdrop-blur-xl"
+                    >
+                      <p className="px-3 pb-2 pt-1 text-xs uppercase tracking-wide text-white/45">Share</p>
+                      <button
+                        type="button"
+                        onClick={handleShareContact}
+                        className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-white/85 transition hover:bg-white/12 hover:text-white"
+                      >
+                        <UserPlusIcon className="h-5 w-5" />
+                        Share contact
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleShareImages}
+                        className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-white/85 transition hover:bg-white/12 hover:text-white"
+                      >
+                        <PhotoIcon className="h-5 w-5" />
+                        Share images
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleShareLocation}
+                        className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-white/85 transition hover:bg-white/12 hover:text-white"
+                      >
+                        <MapPinIcon className="h-5 w-5" />
+                        Share location
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleShareDocuments}
+                        className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-white/85 transition hover:bg-white/12 hover:text-white"
+                      >
+                        <DocumentArrowUpIcon className="h-5 w-5" />
+                        Share documents
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
                 <textarea
                   ref={textareaRef}
                   value={draft}
@@ -626,11 +887,11 @@ const MatchConversationModal = ({ match, currentUserId, sending, error, onClose,
                   onKeyDown={handleComposerKeyDown}
                   placeholder="Type a message"
                   rows={1}
-                  className="max-h-40 flex-1 resize-none border-0 bg-transparent text-[15px] leading-tight text-white/95 placeholder:text-white/45 focus:outline-none focus:ring-0"
+                  className="max-h-30 mb-3 flex-1 resize-none border-0 bg-transparent text-[15px] leading-tight text-white/95 placeholder:text-white/45 focus:outline-none focus:ring-0"
                 />
                 <button
                   type="button"
-                  onClick={handleAttachmentClick}
+                  onClick={handleCameraClick}
                   className="flex h-11 w-11 items-center justify-center rounded-full bg-white/0 text-white/65 transition hover:bg-white/12 hover:text-white"
                   aria-label="Open camera"
                 >
@@ -643,6 +904,14 @@ const MatchConversationModal = ({ match, currentUserId, sending, error, onClose,
                   multiple
                   className="hidden"
                   onChange={handleAttachmentChange}
+                />
+                <input
+                  ref={documentInputRef}
+                  type="file"
+                  accept={DOCUMENT_ACCEPT}
+                  multiple
+                  className="hidden"
+                  onChange={handleDocumentChange}
                 />
                 {hasDraft ? (
                   <button
