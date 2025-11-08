@@ -125,7 +125,7 @@ const SwipeCard = ({ profile, onLike, onPass, onSuperLike, onMessage, onPrevProf
   };
 
   return (
-    <div className="flex w-[78vh] max-w-sm flex-col items-center gap-6 sm:max-w-md ">
+    <div className="flex w-full max-w-sm flex-col items-center gap-5 px-2 sm:max-w-md sm:gap-6 sm:px-0 lg:max-w-lg">
       <div
         onClick={handleCardTap}
         onKeyDown={handleCardKeyDown}
@@ -207,11 +207,11 @@ const SwipeCard = ({ profile, onLike, onPass, onSuperLike, onMessage, onPrevProf
           </div>
         </div>
       </div>
-      <div className="flex flex-wrap items-center justify-center gap-6">
+      <div className="flex w-full flex-wrap items-center justify-center gap-4 sm:gap-6">
         <button
           type="button"
           onClick={onPass}
-          className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-rose-500 shadow-[0_12px_30px_-15px_rgba(244,63,94,0.85)] transition hover:scale-105 focus-visible:scale-105 focus-visible:outline-none"
+          className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-rose-500 shadow-[0_12px_30px_-15px_rgba(244,63,94,0.85)] transition hover:scale-105 focus-visible:scale-105 focus-visible:outline-none sm:h-16 sm:w-16"
           aria-label="Pass"
         >
           <XMarkIcon className="h-8 w-8" />
@@ -220,7 +220,7 @@ const SwipeCard = ({ profile, onLike, onPass, onSuperLike, onMessage, onPrevProf
           <button
             type="button"
             onClick={onMessage}
-            className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-brand-dark shadow-[0_12px_30px_-15px_rgba(59,130,246,0.85)] transition hover:scale-105 focus-visible:scale-105 focus-visible:outline-none"
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-brand-dark shadow-[0_12px_30px_-15px_rgba(59,130,246,0.85)] transition hover:scale-105 focus-visible:scale-105 focus-visible:outline-none sm:h-16 sm:w-16"
             aria-label="Message match"
           >
             <ChatBubbleOvalLeftIcon className="h-8 w-8" />
@@ -229,7 +229,7 @@ const SwipeCard = ({ profile, onLike, onPass, onSuperLike, onMessage, onPrevProf
         <button
           type="button"
           onClick={handleLikeClick}
-          className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-rose-500 via-orange-400 to-amber-400 text-white shadow-[0_20px_35px_-18px_rgba(249,115,22,0.9)] transition hover:scale-105 focus-visible:scale-105 focus-visible:outline-none"
+          className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-rose-500 via-orange-400 to-amber-400 text-white shadow-[0_20px_35px_-18px_rgba(249,115,22,0.9)] transition hover:scale-105 focus-visible:scale-105 focus-visible:outline-none sm:h-20 sm:w-20"
           aria-label="Like"
         >
           <HeartIcon className="h-9 w-9" />
@@ -237,7 +237,7 @@ const SwipeCard = ({ profile, onLike, onPass, onSuperLike, onMessage, onPrevProf
         <button
           type="button"
           onClick={onSuperLike}
-          className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-sky-500 shadow-[0_12px_30px_-15px_rgba(14,165,233,0.85)] transition hover:scale-105 focus-visible:scale-105 focus-visible:outline-none"
+          className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-sky-500 shadow-[0_12px_30px_-15px_rgba(14,165,233,0.85)] transition hover:scale-105 focus-visible:scale-105 focus-visible:outline-none sm:h-16 sm:w-16"
           aria-label="Super like"
         >
           <StarIcon className="h-8 w-8" />

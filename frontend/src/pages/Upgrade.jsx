@@ -54,7 +54,7 @@ const Upgrade = () => {
   };
 
   return (
-    <div className="space-y-10">
+    <div className="w-full space-y-8 sm:space-y-10">
       <div className="mx-auto max-w-3xl text-center">
         <h1 className="text-3xl font-semibold text-slate-900">Membership plans</h1>
         <p className="mt-3 text-sm text-slate-600">
@@ -62,7 +62,7 @@ const Upgrade = () => {
         </p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3">
         {plans.map((plan) => {
           const isSelected = selectedPlan === plan.id;
           return (
@@ -96,7 +96,7 @@ const Upgrade = () => {
         })}
       </div>
 
-      <div className="rounded-3xl bg-white p-6 shadow">
+      <div className="rounded-3xl bg-white p-5 shadow sm:p-6">
         <h2 className="text-lg font-semibold text-slate-800">Preferred payment channel</h2>
         <div className="mt-3 flex flex-wrap gap-3">
           {paymentChannels.map((method) => (
@@ -112,11 +112,11 @@ const Upgrade = () => {
             </button>
           ))}
         </div>
-        <p className="mt-3 text-xs text-slate-500">
+        <p className="mt-3 text-xs text-slate-500 text-center sm:text-left">
           We support M-Pesa via Paystack for East & West Africa, and  for diaspora members.
         </p>
         {message && <p className="mt-3 rounded-lg bg-brand/10 px-3 py-2 text-sm text-brand-dark">{message}</p>}
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
           <button
             type="button"
             onClick={handleUpgrade}
@@ -125,7 +125,7 @@ const Upgrade = () => {
           >
             {loading ? 'Redirecting...' : 'Upgrade now'}
           </button>
-          <p className="text-xs text-slate-500 mt-4">
+          <p className="text-xs text-slate-500 text-center sm:mt-0 sm:text-left">
             {token ? 'Stay accountable to your intentions.' : 'You need an account to upgrade.'}
           </p>
         </div>

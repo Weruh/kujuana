@@ -73,12 +73,12 @@ const Matches = () => {
           <p className="text-sm text-slate-500">Celebrate meaningful connections and take the next intentional step.</p>
         </div>
         {stats && (
-          <div className="flex gap-4">
-            <div className="rounded-2xl bg-white px-4 py-3 text-center shadow">
+          <div className="flex flex-wrap gap-3 sm:gap-4">
+            <div className="flex min-w-[140px] flex-1 flex-col rounded-2xl bg-white px-4 py-3 text-center shadow sm:flex-none">
               <p className="text-xs uppercase text-slate-500">Swipes today</p>
               <p className="text-xl font-semibold text-slate-800">{stats.swipesToday}</p>
             </div>
-            <div className="rounded-2xl bg-white px-4 py-3 text-center shadow">
+            <div className="flex min-w-[140px] flex-1 flex-col rounded-2xl bg-white px-4 py-3 text-center shadow sm:flex-none">
               <p className="text-xs uppercase text-slate-500">Matches today</p>
               <p className="text-xl font-semibold text-slate-800">{stats.matchesToday}</p>
             </div>
@@ -128,7 +128,7 @@ const Matches = () => {
           }
           const lastActivity = lastMessage?.createdAt || match.updatedAt || match.matchedAt || match.createdAt;
           const dayLabel = formatRelativeDay(lastActivity);
-          const rowClasses = `flex w-full items-center gap-4 rounded-3xl border border-transparent px-4 py-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${index === 0 ? "bg-slate-50" : "bg-white"}`;
+          const rowClasses = `flex w-full flex-wrap items-center gap-4 rounded-3xl border border-transparent px-4 py-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${index === 0 ? "bg-slate-50" : "bg-white"}`;
           const ringClasses = `flex h-12 w-12 flex-none items-center justify-center rounded-full border-2 p-[2px] ${isPending ? "border-amber-400" : "border-emerald-500"}`;
           const checkClasses = `h-4 w-4 flex-none ${isPending ? "text-amber-500" : "text-emerald-500"}`;
 

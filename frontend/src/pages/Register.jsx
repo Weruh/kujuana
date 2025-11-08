@@ -85,7 +85,7 @@ const Register = () => {
 
   return (
     <div className="min-h-screen bg-sand-50">
-      <div className="mx-auto flex max-w-6xl flex-col gap-12 px-6 py-10">
+      <div className="mx-auto flex max-w-6xl flex-col gap-10 px-4 py-8 sm:gap-12 sm:px-6 sm:py-10">
         <Logo />
         <form onSubmit={handleSubmit} className="grid gap-10">
           <div className="grid gap-4 md:grid-cols-3">
@@ -97,7 +97,7 @@ const Register = () => {
                 We champion serious, values-aligned dating for Africans ready to build a legacy together.
               </p>
             </div>
-            <div className="rounded-3xl bg-white p-6 text-sm text-slate-500 shadow">
+            <div className="rounded-3xl bg-white p-5 text-sm text-slate-500 shadow sm:p-6">
               <p className="font-semibold text-slate-700">How it works</p>
               <ul className="mt-3 space-y-2">
                 <li>1. Share who you are and what you value.</li>
@@ -108,7 +108,7 @@ const Register = () => {
           </div>
 
           {step === 1 && (
-            <div className="grid gap-6 rounded-3xl bg-white p-8 shadow-xl md:grid-cols-2">
+            <div className="grid gap-6 rounded-3xl bg-white p-6 shadow-xl md:grid-cols-2 sm:p-8">
               <div className="space-y-4">
                 <h2 className="text-xl font-semibold text-slate-800">Your basics</h2>
                 <TextInput
@@ -169,7 +169,7 @@ const Register = () => {
                   value={form.occupation}
                   onChange={handleChange}
                 />
-                <div className="flex gap-4">
+                <div className="flex flex-col gap-4 sm:flex-row">
                   <TextInput
                     name="locationCity"
                     label="City"
@@ -186,7 +186,7 @@ const Register = () => {
                   />
                 </div>
               </div>
-              <div className="md:col-span-2 flex justify-end">
+              <div className="md:col-span-2 flex flex-col gap-3 sm:flex-row sm:justify-end">
                 <button
                   type="button"
                   onClick={nextStep}
@@ -199,7 +199,7 @@ const Register = () => {
           )}
 
           {step === 2 && (
-            <div className="grid gap-6 rounded-3xl bg-white p-8 shadow-xl">
+            <div className="grid gap-6 rounded-3xl bg-white p-6 shadow-xl sm:p-8">
               <div className="grid gap-6 md:grid-cols-2">
                 <div className="space-y-4">
                   <h2 className="text-xl font-semibold text-slate-800">Your story</h2>
@@ -232,7 +232,7 @@ const Register = () => {
                   </div>
                 </div>
               </div>
-              <div className="flex justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
                 <button
                   type="button"
                   onClick={prevStep}
@@ -252,7 +252,7 @@ const Register = () => {
           )}
 
           {step === 3 && (
-            <div className="grid gap-6 rounded-3xl bg-white p-8 shadow-xl">
+            <div className="grid gap-6 rounded-3xl bg-white p-6 shadow-xl sm:p-8">
               <h2 className="text-xl font-semibold text-slate-800">Match preferences</h2>
               <div className="grid gap-6 md:grid-cols-2">
                 <SelectInput
@@ -292,7 +292,7 @@ const Register = () => {
               {error && (
                 <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
               )}
-              <div className="flex justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
                 <button
                   type="button"
                   onClick={prevStep}
