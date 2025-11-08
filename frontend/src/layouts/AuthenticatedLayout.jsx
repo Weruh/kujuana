@@ -62,7 +62,7 @@ const AuthenticatedLayout = () => {
             </button>
             {user && (
               <div className="hidden items-center gap-3 md:flex">
-                <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-brand/20 text-sm font-semibold uppercase text-brand-dark">
+                <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full  text-sm font-semibold uppercase text-brand-dark">
                   {avatarUrl ? (
                     <img
                       src={avatarUrl}
@@ -81,13 +81,13 @@ const AuthenticatedLayout = () => {
                 </div>
               </div>
             )}
-            <button
+            {/*<button
               type="button"
               onClick={handleLogout}
               className="rounded-full border border-brand-dark/60 px-4 py-2 text-sm font-semibold text-brand-dark transition hover:bg-brand-dark hover:text-white"
             >
               Log out
-            </button>
+              </button>*/}
           </div>
         </div>
         {mobileNavOpen && (

@@ -11,18 +11,18 @@ const Landing = () => (
   <div className="gradient-bg relative min-h-screen overflow-hidden">
     <div className="pointer-events-none absolute -right-32 -top-36 h-72 w-72 rounded-full bg-brand-light/80 blur-3xl" />
     <div className="pointer-events-none absolute bottom-[-120px] left-[-80px] h-80 w-80 rounded-full bg-brand-dark/20 blur-[160px]" />
-    <header className="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-6 py-8">
-      <Logo />
-      <div className="flex items-center gap-4">
+    <header className="relative z-10 mx-auto flex max-w-6xl flex-col items-start gap-6 px-6 py-8 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+      <Logo className="w-full sm:w-auto" />
+      <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center sm:gap-4">
         <Link
           to="/login"
-          className="text-sm font-semibold text-slate-700 transition hover:text-brand-dark"
+          className="inline-flex w-full items-center justify-center rounded-full border border-transparent bg-white/70 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-white/90 hover:text-brand-dark sm:w-auto"
         >
           Log in
         </Link>
         <Link
           to="/register"
-          className="rounded-full bg-gradient-to-r from-brand-dark via-[#9d79ff] to-[#b894ff] px-6 py-2 text-sm font-semibold text-white shadow-lg transition hover:via-brand-dark hover:to-[#9d79ff]"
+          className="w-full rounded-full bg-gradient-to-r from-brand-dark via-[#9d79ff] to-[#b894ff] px-6 py-2 text-center text-sm font-semibold text-white shadow-lg transition hover:via-brand-dark hover:to-[#9d79ff] sm:w-auto"
         >
           Get started
         </Link>
@@ -48,23 +48,25 @@ const Landing = () => (
             </p>
           ))}
         </div>
-        <div className="flex flex-col gap-2 sm:flex-row">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch sm:justify-center sm:gap-4">
           <Link
             to="/register"
-            className="flex-1 rounded-full bg-gradient-to-r from-brand-dark via-[#9d79ff] to-[#b894ff] px-5 py-2 text-center text-sm font-semibold uppercase tracking-wide text-white shadow-xl transition hover:via-brand-dark hover:to-[#9d79ff]"
+            className="w-full rounded-full bg-gradient-to-r from-brand-dark via-[#a671ff] to-[#d2b7ff] px-3 py-2.5 text-center text-xs font-semibold uppercase tracking-[0.25em] text-white shadow-[0_10px_20px_rgba(120,73,255,0.3)] transition hover:shadow-[0_14px_28px_rgba(120,73,255,0.4)] sm:flex-1 sm:text-sm"
           >
-            Join Kujuana
+            Join
           </Link>
           <Link
             to="/upgrade"
-            className="flex-1 rounded-full border-2 border-brand-dark/60 bg-white/60 px-5 py-2 text-center text-sm font-semibold uppercase tracking-wide text-brand-dark shadow-lg backdrop-blur transition hover:border-brand-dark hover:bg-white/80"
+            className="w-full rounded-full bg-gradient-to-r from-brand-dark/70 via-[#c39dff]/70 to-[#f1dcff]/70 p-[1.5px] text-center shadow-[0_10px_18px_rgba(120,73,255,0.2)] transition hover:shadow-[0_14px_26px_rgba(120,73,255,0.3)] sm:flex-1"
           >
-            Explore membership
+            <span className="block w-full rounded-full bg-white/95 px-6 py-2.5 text-xs font-semibold uppercase tracking-[0.2em] text-brand-dark sm:px-8 sm:text-sm">
+              Explore 
+            </span>
           </Link>
         </div>
       </div>
       <div className="flex flex-1 justify-center md:items-stretch">
-        <div className="relative flex-1 w-full max-w-md max-h-[320px] aspect-[4/3] overflow-hidden rounded-[2.75rem] shadow-2xl md:max-w-lg md:max-h-[360px] md:h-full">
+        <div className="relative ml-8 mt-24 flex-1 w-full max-w-md max-h-[320px] aspect-[4/3] overflow-hidden rounded-[2.75rem] shadow-2xl md:max-w-lg md:max-h-[360px] md:h-full">
           <img
             src="/images/profiles/kujuana.jpeg"
             alt="Kujuana couple smiling together"
