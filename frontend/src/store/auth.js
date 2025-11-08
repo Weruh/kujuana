@@ -1,8 +1,10 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import axios from 'axios';
 
+const apiBaseURL = import.meta.env.VITE_API_BASE_URL || '/api';
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: apiBaseURL,
 });
 
 const persistToken = (token) => {
@@ -73,3 +75,4 @@ export const useAuthStore = create((set, get) => ({
 }));
 
 export { api };
+

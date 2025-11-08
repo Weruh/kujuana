@@ -831,7 +831,7 @@ const MatchConversation = () => {
     const selection = imageFiles.slice(0, availableSlots);
     const oversize = selection.find((file) => file.size > MAX_ATTACHMENT_BYTES);
     if (oversize) {
-      setError("Images must be 5MB or smaller.");
+      setError("Images must be 50MB or smaller.");
       return;
     }
     try {
@@ -890,7 +890,7 @@ const MatchConversation = () => {
       (file) => file.size > MAX_ATTACHMENT_BYTES
     );
     if (oversized) {
-      setError("Documents must be 5MB or smaller.");
+      setError("Documents must be 50MB or smaller.");
       return;
     }
     try {
@@ -1139,10 +1139,10 @@ const MatchConversation = () => {
 
   return (
     <div
-      className="relative flex w-full max-w-4xl flex-col overflow-hidden rounded-[1.5rem] bg-white/95 shadow-[0_20px_55px_-30px_rgba(0,0,0,0.8)] min-h-[60vh] sm:min-h-[70vh] lg:min-h-[78vh]"
+      className="relative flex w-full max-w-4xl flex-col overflow-hidden rounded-[1.5rem] bg-white/95 shadow-[0_20px_55px_-30px_rgba(0,0,0,0.8)] min-h-[60vh] sm:min-h-[70vh] lg:min-h-[78vh] h-[calc(100vh-5rem)] sm:h-[calc(100vh-6rem)]"
       style={conversationFontStyle}
     >
-      <div className="flex items-center justify-between border-b border-[#dde1e3] bg-[#f0f2f5] px-4 py-3 text-[#3b4a54] sm:px-6">
+      <div className="flex flex-shrink-0 items-center justify-between border-b border-[#dde1e3] bg-[#f0f2f5] px-4 py-3 text-[#3b4a54] sm:px-6">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3 sm:flex-nowrap">
           <button
             type="button"
@@ -1207,7 +1207,7 @@ const MatchConversation = () => {
         </div>
       </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-5 sm:px-5 sm:py-6" style={chatBackgroundStyle}>
+      <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto px-4 py-5 sm:px-5 sm:py-6" style={chatBackgroundStyle}>
         <div className="space-y-4">
           {groupedMessages.length ? (
             groupedMessages.map((item) => {
@@ -1247,7 +1247,7 @@ const MatchConversation = () => {
                   <div
                     className={`relative max-w-[85%] break-words rounded-[1.5rem] border px-4 py-3 text-[15px] leading-snug shadow-sm ${
                       isMine
-                        ? "ml-auto rounded-br-md border-[#b6deb6] bg-[#d9fdd3] text-[#1f2528]"
+                        ? "ml-auto rounded-br-md border-[#816cc0] bg-[#b39bec] text-white"
                         : "mr-auto rounded-bl-md border-[#ebe9e4] bg-white text-[#1f2c34]"
                     }`}
                   >
@@ -1457,7 +1457,7 @@ const MatchConversation = () => {
                         isMine ? "right-[-6px]" : "left-[-6px]"
                       } h-3 w-3 rotate-45 ${
                         isMine
-                          ? "border-b border-r border-[#b6deb6] bg-[#d9fdd3]"
+                          ? "border-b border-r border-[#4f3f7f] bg-[#5e4891]"
                           : "border-b border-l border-[#ebe9e4] bg-white"
                       }`}
                       aria-hidden="true"
@@ -1476,14 +1476,14 @@ const MatchConversation = () => {
       </div>
 
       {error && (
-        <p className="px-4 pb-1 text-sm text-rose-600 sm:px-6">{error}</p>
+        <p className="flex-shrink-0 px-4 pb-1 text-sm text-rose-600 sm:px-6">{error}</p>
       )}
       {recordingError && !isRecording && !pendingVoiceNote ? (
-        <p className="px-4 text-sm text-rose-600 sm:px-6">{recordingError}</p>
+        <p className="flex-shrink-0 px-4 text-sm text-rose-600 sm:px-6">{recordingError}</p>
       ) : null}
 
       {isRecording ? (
-        <div className="px-4 sm:px-6">
+        <div className="flex-shrink-0 px-4 sm:px-6">
           <div className="mb-2 flex items-center gap-3 rounded-2xl bg-white px-3 py-2 text-sm text-[#1f2c34] shadow">
             <span
               className="inline-flex h-2 w-2 animate-ping rounded-full bg-rose-500"
@@ -1506,7 +1506,7 @@ const MatchConversation = () => {
       ) : null}
 
       {attachments.length ? (
-        <div className="px-4 sm:px-6">
+        <div className="flex-shrink-0 px-4 sm:px-6">
           <div className="mb-2 flex flex-wrap gap-3">
             {attachments.map((item) => {
               if (!item) return null;
@@ -1649,7 +1649,7 @@ const MatchConversation = () => {
       ) : null}
 
       {pendingVoiceNote ? (
-        <div className="px-4 sm:px-6">
+        <div className="flex-shrink-0 px-4 sm:px-6">
           <div className="mb-2 flex items-center gap-3 rounded-2xl bg-white px-3 py-2 text-sm text-[#5e4891] shadow">
             <audio
               controls
@@ -1673,7 +1673,7 @@ const MatchConversation = () => {
 
       <form
         onSubmit={handleSend}
-        className="border-t border-[#d1d7db] bg-[#f0f2f5] px-4 py-4 sm:px-5"
+        className="flex-shrink-0 border-t border-[#d1d7db] bg-[#f0f2f5] px-4 py-4 sm:px-5"
       >
         <div className="relative flex items-end gap-2 rounded-full bg-white px-3 py-2 shadow-sm">
           {isEmojiPickerOpen ? (
@@ -1942,3 +1942,5 @@ const MatchConversation = () => {
 };
 
 export default MatchConversation;
+
+

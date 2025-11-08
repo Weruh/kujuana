@@ -27,7 +27,7 @@ const DOCUMENT_EXTENSION_MIME_MAP = {
 };
 
 export const MAX_ATTACHMENTS = 6;
-export const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
+export const MAX_ATTACHMENT_BYTES = 50 * 1024 * 1024;
 export const DOCUMENT_ACCEPT_STRING = DOCUMENT_ACCEPT;
 
 export const formatFileSize = (bytes) => {
@@ -208,3 +208,4 @@ export const normalizeAttachmentsForDisplay = (attachments, fallbackIdPrefix = '
     .map((attachment, index) => normalizeAttachmentForDisplay(attachment, `${fallbackIdPrefix}-${index}`))
     .filter(Boolean);
 };
+
