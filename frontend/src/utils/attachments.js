@@ -98,6 +98,8 @@ const toNumber = (value) => {
   return Number.isFinite(parsed) ? parsed : undefined;
 };
 
+const cleanText = (value) => (typeof value === 'string' ? value.trim() : '');
+
 export const normalizeAttachmentForDisplay = (attachment, fallbackIdPrefix = 'attachment') => {
   if (!attachment || typeof attachment !== 'object') {
     return null;
@@ -133,6 +135,29 @@ export const normalizeAttachmentForDisplay = (attachment, fallbackIdPrefix = 'at
       label,
       mapUrl,
       accuracy: typeof accuracy === 'number' ? accuracy : undefined,
+    };
+  }
+
+  if (rawKind === 'contact') {
+    const name = cleanText(attachment.name);
+    const phone =
+      cleanText(attachment.phone) ||
+      cleanText(attachment.phoneNumber) ||
+      cleanText(attachment.number);
+    const email = cleanText(attachment.email) || cleanText(attachment.emailAddress);
+    const note = cleanText(attachment.note) || cleanText(attachment.notes) || cleanText(attachment.description);
+
+    if (!name && !phone && !email && !note) {
+      return null;
+    }
+
+    return {
+      id: baseId,
+      kind: 'contact',
+      name: name || undefined,
+      phone: phone || undefined,
+      email: email || undefined,
+      note: note || undefined,
     };
   }
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { api } from '../store/auth.js';
@@ -22,13 +22,13 @@ const SwipeDeck = () => {
   const [latestMatchId, setLatestMatchId] = useState(null);
   const navigate = useNavigate();
 
-  const hydrateSuggestions = (list) => {
+  const hydrateSuggestions = useCallback((list) => {
     const next = Array.isArray(list) && list.length ? list : buildMockDeck();
     setSuggestions(next);
     setCurrentIndex(0);
-  };
+  }, []);
 
-  const loadSuggestions = async () => {
+  const loadSuggestions = useCallback(async () => {
     setLoading(true);
     try {
       const { data } = await api.get('/match/suggestions');
@@ -39,11 +39,11 @@ const SwipeDeck = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [hydrateSuggestions]);
 
   useEffect(() => {
     loadSuggestions();
-  }, []);
+  }, [loadSuggestions]);
 
   const handleDecision = async (decision, { advance = true } = {}) => {
     if (!suggestions.length) return;
@@ -238,6 +238,7 @@ const SwipeDeck = () => {
 };
 
 export default SwipeDeck;
+
 
 
 

@@ -117,8 +117,7 @@ const buildFallbackConversation = (myId, partnerId) => {
         progress: 0.35,
         highlight: true,
       },
-      text: 'Sending a quick voice note...
-(0:15)',
+      text: 'Sending a quick voice note...\n(0:15)',
       createdAt: stamp(22),
       sideMetric: '225',
     },
@@ -296,10 +295,8 @@ const MatchConversationModal = ({ match, currentUserId, sending, error, onClose,
         'Online'
       : 'Online');
 
-  if (!match) return null;
-
-  const isPending = (match.status || 'matched') !== 'matched';
-  const initiatedByMe = match.initiatedBy === currentUserId;
+  const isPending = (match?.status || 'matched') !== 'matched';
+  const initiatedByMe = match?.initiatedBy === currentUserId;
   const hasDraft = draft.trim().length > 0;
 
   const emojiButtonClasses = [
@@ -447,8 +444,7 @@ const MatchConversationModal = ({ match, currentUserId, sending, error, onClose,
     const files = Array.from(event.target.files || []);
     if (!files.length) return;
     const names = files.map((file) => file.name).join(', ');
-    setDraft((prev) => `${prev}${prev ? '
-' : ''}[Attachment: ${names}]`);
+    setDraft((prev) => `${prev}${prev ? '\n' : ''}[Attachment: ${names}]`);
     event.target.value = '';
     textareaRef.current?.focus();
   };
@@ -945,3 +941,7 @@ const MatchConversationModal = ({ match, currentUserId, sending, error, onClose,
 };
 
 export default MatchConversationModal;
+
+
+
+
